@@ -46,7 +46,7 @@ class AppwriteReportRepository implements ReportRepository {
         queries.add(Query.equal('status', status));
       }
       if (search != null && search.isNotEmpty) {
-        queries.add(Query.search('address', search));
+        queries.add(Query.contains('address', search));
       }
       final res = await _db.listDocuments(
         databaseId: AppwriteConfig.databaseId,

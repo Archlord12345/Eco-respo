@@ -6,7 +6,9 @@ import '../../../core/constants/app_assets.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/reward_badge_card.dart';
 import '../../../core/widgets/status_badge.dart';
+import '../../../shared/models/collection_request.dart';
 import '../../../shared/models/enums.dart';
+import '../../../shared/models/waste_report.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../reporting/data/appwrite_report_repository.dart';
 
@@ -156,12 +158,14 @@ class _ImpactTile extends StatelessWidget {
   }
 }
 
-final myReportsProvider = FutureProvider.family((ref, String? uid) {
-  if (uid == null) return Future.value([]);
+final myReportsProvider =
+    FutureProvider.family<List<WasteReport>, String?>((ref, uid) {
+  if (uid == null) return Future.value(const []);
   return ref.watch(reportRepositoryProvider).listMine(uid);
 });
 
-final myRequestsProvider = FutureProvider.family((ref, String? uid) {
-  if (uid == null) return Future.value([]);
+final myRequestsProvider =
+    FutureProvider.family<List<CollectionRequest>, String?>((ref, uid) {
+  if (uid == null) return Future.value(const []);
   return ref.watch(requestRepositoryProvider).listMine(uid);
 });

@@ -127,6 +127,46 @@ class AppwriteAuthRepository implements AuthRepository {
 
   @override
   Future<void> logout() => _account.deleteSessions();
+
+  @override
+  Future<AppUser> loginEmail({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      await _account.createEmailPasswordSession(
+        email: email.trim(),
+        password: password,
+      );
+      final account = await _account.get();
+      return _loadOrCreate(account.$id);
+    } on AppwriteException catch (e) {
+      throw AuthFailure(e.message ?? 'Connexion impossible', code: e.code?.toString());
+    }
+  }
+
+  @override
+  Future<AppUser> registerEmail({
+    required String email,
+    required String password,
+    required String name,
+  }) async {
+    try {
+      final created = await _account.create(
+        userId: ID.unique(),
+        email: email.trim(),
+        password: password,
+        name: name,
+      );
+      await _account.createEmailPasswordSession(
+        email: email.trim(),
+        password: password,
+      );
+      return _loadOrCreate(created.$id);
+    } on AppwriteException catch (e) {
+      throw AuthFailure(e.message ?? 'Inscription impossible', code: e.code?.toString());
+    }
+  }
 }
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {

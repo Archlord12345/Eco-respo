@@ -6,6 +6,7 @@ import '../../../core/constants/app_assets.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/reward_badge_card.dart';
+import '../../../shared/models/collector.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../reporting/data/appwrite_report_repository.dart';
 
@@ -117,7 +118,8 @@ class _CollectorConfirmScreenState extends ConsumerState<CollectorConfirmScreen>
   }
 }
 
-final myCollectorProvider = FutureProvider.family((ref, String? uid) {
+final myCollectorProvider =
+    FutureProvider.family<Collector?, String?>((ref, uid) {
   if (uid == null) return Future.value(null);
   return ref.watch(collectorRepositoryProvider).byUserId(uid);
 });

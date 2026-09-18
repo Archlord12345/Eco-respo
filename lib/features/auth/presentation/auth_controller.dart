@@ -71,6 +71,37 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  Future<bool> loginEmail(String email, String password) async {
+    state = state.copyWith(loading: true, clearError: true);
+    try {
+      final user = await ref.read(authRepositoryProvider).loginEmail(
+            email: email,
+            password: password,
+          );
+      state = AuthState(user: user);
+      return true;
+    } catch (e) {
+      state = state.copyWith(loading: false, error: e.toString());
+      return false;
+    }
+  }
+
+  Future<bool> registerEmail(String email, String password, String name) async {
+    state = state.copyWith(loading: true, clearError: true);
+    try {
+      final user = await ref.read(authRepositoryProvider).registerEmail(
+            email: email,
+            password: password,
+            name: name,
+          );
+      state = AuthState(user: user);
+      return true;
+    } catch (e) {
+      state = state.copyWith(loading: false, error: e.toString());
+      return false;
+    }
+  }
+
   Future<void> saveProfile(AppUser user) async {
     final saved = await ref.read(authRepositoryProvider).upsertProfile(user);
     state = state.copyWith(user: saved);
