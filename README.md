@@ -92,8 +92,12 @@ Valkey n’est **jamais** appelé depuis Flutter. Le classement et le matching c
 Voir `appwrite/README.md`. Provisionnement (clé serveur, hors client) :
 
 ```bash
+cp .env.example .env   # puis coller APPWRITE_API_KEY
+tool/appwrite.sh ping
 APPWRITE_API_KEY=... python3 tool/setup_appwrite.py
 ```
+
+Le script `tool/appwrite.sh` lit `.env` et parle à l’API REST (ping, collections, documents, buckets, functions). La clé n’est jamais dans le client Flutter.
 
 ## Tests
 

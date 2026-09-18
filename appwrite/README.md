@@ -4,7 +4,7 @@ Endpoint : `https://appwrite.kernelforge.codes/v1`
 Project ID : `6aad2f1a000a6a6de281`  
 Database ID : `eco_responsable_db`
 
-La **clé API serveur** ne doit jamais être embarquée dans l’app Flutter. Elle sert uniquement à la console / `tool/setup_appwrite.py`.
+La **clé API serveur** ne doit jamais être embarquée dans l’app Flutter. Elle sert uniquement à la console, à `tool/appwrite.sh` et à `tool/setup_appwrite.py` (via `.env`).
 
 Plateformes Flutter à enregistrer : type `flutter-android` / `flutter-ios` / `flutter-linux` / `flutter-macos` / `flutter-windows`, clé `com.eco.kf`.
 
