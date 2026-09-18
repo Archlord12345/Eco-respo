@@ -139,7 +139,7 @@ class AppwriteAuthRepository implements AuthRepository {
         password: password,
       );
       final account = await _account.get();
-      return _loadOrCreate(account.$id);
+      return await _loadOrCreate(account.$id);
     } on AppwriteException catch (e) {
       throw AuthFailure(e.message ?? 'Connexion impossible', code: e.code?.toString());
     }
@@ -162,7 +162,7 @@ class AppwriteAuthRepository implements AuthRepository {
         email: email.trim(),
         password: password,
       );
-      return _loadOrCreate(created.$id);
+      return await _loadOrCreate(created.$id);
     } on AppwriteException catch (e) {
       throw AuthFailure(e.message ?? 'Inscription impossible', code: e.code?.toString());
     }

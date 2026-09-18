@@ -153,11 +153,10 @@ class _CollectionRequestScreenState extends ConsumerState<CollectionRequestScree
                       amountXaf: 1500,
                       requestId: created.id,
                     );
-                if (mounted) {
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Demande envoyée — matching collecteur en cours')),
                   );
-                }
               } finally {
                 if (mounted) setState(() => _loading = false);
               }

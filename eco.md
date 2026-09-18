@@ -191,7 +191,6 @@ dev_dependencies:
 
 ---
 baas appwrite:https://appwrite.kernelforge.codes/
-api key for projet: standard_1b9bfc202e7396a4f39a07e5ffbca092a47d1fd6592aa0fd502cfd4d162efdf6242bde02c210692d61e6a7decce49b52f5d853a4069c7fd6fa16f27b666920d9b0787a27710c111c3d79d8b6312b8f62fc045c37e25501ea9206d20cd19159010c1aad42734e0f23d34dc17274190fc0d71f6797746ca54ccb11e76238db8ba2
 project info: Eco-Res
 6aad2f1a000a6a6de281
 

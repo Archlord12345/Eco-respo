@@ -202,11 +202,10 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                         city: user.city,
                       ),
                     );
-                if (mounted) {
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Signalement envoyé')),
                   );
-                }
               } catch (e) {
                 setState(() => _error = e.toString());
               } finally {

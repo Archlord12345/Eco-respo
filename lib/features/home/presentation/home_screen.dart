@@ -8,7 +8,6 @@ import '../../../core/widgets/eco_app_bar.dart';
 import '../../../core/widgets/impact_gauge.dart';
 import '../../../core/widgets/reward_badge_card.dart';
 import '../../auth/presentation/auth_controller.dart';
-import '../../reporting/data/appwrite_report_repository.dart';
 import '../../../shared/models/reward_item.dart';
 
 class HomeScreen extends ConsumerWidget {

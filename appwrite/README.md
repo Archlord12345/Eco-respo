@@ -8,6 +8,29 @@ La **clé API serveur** ne doit jamais être embarquée dans l’app Flutter. El
 
 Plateformes Flutter à enregistrer : type `flutter-android` / `flutter-ios` / `flutter-linux` / `flutter-macos` / `flutter-windows`, clé `com.eco.kf`.
 
+## Plateformes desktop
+
+Les trois plateformes desktop utilisent le même endpoint, le même Project ID et
+le même identifiant applicatif :
+
+| Type Appwrite | Nom | Identifiant |
+|---|---|---|
+| `flutter-linux` | `eco-respo linux` | `com.eco.kf` |
+| `flutter-macos` | `eco-respo macos` | `com.eco.kf` |
+| `flutter-windows` | `eco-respo windows` | `com.eco.kf` |
+
+Le script `tool/setup_appwrite.py` crée ces plateformes en plus des plateformes
+Android et iOS. L'initialisation côté desktop reste :
+
+```dart
+final client = Client()
+	..setEndpoint('https://appwrite.kernelforge.codes/v1')
+	..setProject('6aad2f1a000a6a6de281');
+```
+
+Ne pas activer `setSelfSigned(true)` sur l'endpoint de production. Ce réglage
+est uniquement destiné à une instance locale avec certificat autosigné.
+
 ## Collections
 
 Permissions collection (MVP) : `read(any)`, `create/update/delete(users)` + **document security** activé. À durcir ensuite avec Teams `admins` / `collectors`.

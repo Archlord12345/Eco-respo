@@ -13,11 +13,11 @@ ENDPOINT = os.environ.get(
     "APPWRITE_ENDPOINT", "https://appwrite.kernelforge.codes/v1"
 ).rstrip("/")
 PROJECT = os.environ.get("APPWRITE_PROJECT_ID", "6aad2f1a000a6a6de281")
-API_KEY = os.environ.get(
-    "APPWRITE_API_KEY",
-    "standard_1b9bfc202e7396a4f39a07e5ffbca092a47d1fd6592aa0fd502cfd4d162efdf6242bde02c210692d61e6a7decce49b52f5d853a4069c7fd6fa16f27b666920d9b0787a27710c111c3d79d8b6312b8f62fc045c37e25501ea9206d20cd19159010c1aad42734e0f23d34dc17274190fc0d71f6797746ca54ccb11e76238db8ba2",
-)
+API_KEY = os.environ.get("APPWRITE_API_KEY")
 DB = "eco_responsable_db"
+
+if not API_KEY:
+    raise SystemExit("APPWRITE_API_KEY est obligatoire pour provisionner Appwrite.")
 
 
 def req(method: str, path: str, body: dict | None = None, ok: tuple[int, ...] = (200, 201, 204)):

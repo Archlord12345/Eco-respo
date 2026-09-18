@@ -8,6 +8,10 @@ class AppwriteConfig {
     'APPWRITE_PROJECT_ID',
     defaultValue: '6aad2f1a000a6a6de281',
   );
+  static const selfSigned = bool.fromEnvironment(
+    'APPWRITE_SELF_SIGNED',
+    defaultValue: false,
+  );
   static const databaseId = 'eco_responsable_db';
 
   static const usersCollection = 'users';

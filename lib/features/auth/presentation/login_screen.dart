@@ -158,7 +158,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             onPressed: () async {
               final code = _otp.map((c) => c.text).join();
               final ok = await ref.read(authProvider.notifier).verify(code);
-              if (ok && mounted) context.go('/city');
+                if (!context.mounted) return;
+                if (ok) context.go('/city');
             },
           ),
           const SizedBox(height: 16),

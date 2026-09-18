@@ -13,6 +13,33 @@ class _FakeAuthRepository implements AuthRepository {
   Future<void> logout() async => stored = null;
 
   @override
+  Future<AppUser> loginEmail({
+    required String email,
+    required String password,
+  }) async => stored = AppUser(
+    id: 'email-user',
+    name: 'Moussa',
+    phone: '+237690000000',
+    city: 'Yaoundé',
+    role: UserRole.citizen,
+    points: 0,
+  );
+
+  @override
+  Future<AppUser> registerEmail({
+    required String email,
+    required String password,
+    required String name,
+  }) async => stored = AppUser(
+    id: 'email-user',
+    name: name,
+    phone: '+237690000000',
+    city: 'Yaoundé',
+    role: UserRole.citizen,
+    points: 0,
+  );
+
+  @override
   Future<String> requestOtp(String phoneE164) async => 'user-otp';
 
   @override

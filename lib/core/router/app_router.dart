@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:animations/animations.dart';
 
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/city_select_screen.dart';
@@ -18,6 +19,25 @@ import '../../features/rewards/presentation/rewards_screen.dart';
 import '../../shared/models/enums.dart';
 import '../widgets/app_scaffold.dart';
 import 'route_names.dart';
+
+CustomTransitionPage<void> _animatedPage({
+  required GoRouterState state,
+  required Widget child,
+}) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 360),
+    reverseTransitionDuration: const Duration(milliseconds: 260),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeThroughTransition(
+        animation: animation,
+        secondaryAnimation: secondaryAnimation,
+        child: child,
+      );
+    },
+  );
+}
 
 class _AuthRefresh extends ChangeNotifier {
   _AuthRefresh(Ref ref) {
@@ -51,27 +71,42 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/welcome',
         name: RouteNames.welcome,
-        builder: (_, _) => const WelcomeScreen(),
+        pageBuilder: (_, state) => _animatedPage(
+          state: state,
+          child: const WelcomeScreen(),
+        ),
       ),
       GoRoute(
         path: '/login',
         name: RouteNames.login,
-        builder: (_, _) => const LoginScreen(),
+        pageBuilder: (_, state) => _animatedPage(
+          state: state,
+          child: const LoginScreen(),
+        ),
       ),
       GoRoute(
         path: '/city',
         name: RouteNames.city,
-        builder: (_, _) => const CitySelectScreen(),
+        pageBuilder: (_, state) => _animatedPage(
+          state: state,
+          child: const CitySelectScreen(),
+        ),
       ),
       GoRoute(
         path: '/rewards',
         name: RouteNames.rewards,
-        builder: (_, _) => const RewardsScreen(),
+        pageBuilder: (_, state) => _animatedPage(
+          state: state,
+          child: const RewardsScreen(),
+        ),
       ),
       GoRoute(
         path: '/history',
         name: RouteNames.history,
-        builder: (_, _) => const HistoryScreen(),
+        pageBuilder: (_, state) => _animatedPage(
+          state: state,
+          child: const HistoryScreen(),
+        ),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => CitizenShell(navigationShell: shell),
