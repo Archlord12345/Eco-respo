@@ -1,0 +1,14 @@
+{
+  "@@locale": "en",
+  "appName": "Eco-Responsible",
+  "welcomeTitle": "Make every citizen an actor for urban cleanliness",
+  "commencer": "Start",
+  "inscription": "Sign Up",
+  "phoneLabel": "Phone Number (Cameroon)",
+  "getOtp": "Get OTP Code",
+  "valider": "Validate",
+  "homeImpactTitle": "Your impact this week",
+  "points": "points",
+  "kgSorted": "kg sorted",
+  "co2Avoided": "kg CO₂ avoided"
+}

@@ -1,0 +1,14 @@
+{
+  "@@locale": "fr",
+  "appName": "Éco-Responsable",
+  "welcomeTitle": "Faites de chaque citoyen un acteur de la propreté urbaine",
+  "commencer": "Commencer",
+  "inscription": "Inscription",
+  "phoneLabel": "Numéro de téléphone (Cameroun)",
+  "getOtp": "Recevoir le code OTP",
+  "valider": "Valider",
+  "homeImpactTitle": "Votre impact cette semaine",
+  "points": "points",
+  "kgSorted": "kg triés",
+  "co2Avoided": "kg CO₂ évité"
+}
