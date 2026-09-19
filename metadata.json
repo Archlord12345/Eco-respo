@@ -1,0 +1,11 @@
+{
+  "name": "Éco-Responsable",
+  "description": "Plateforme citoyenne de gestion des déchets au Cameroun",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
