@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/appwrite/appwrite_client.dart';
+import '../../../core/appwrite/appwrite_config.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/reward_badge_card.dart';
@@ -22,14 +23,37 @@ class AdminDashboardScreen extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: const [
-              _Kpi(title: 'Taux de résolution', value: '78%', hint: 'sur 365 signalements', color: Color(0xFFE8F5E9)),
-              _Kpi(title: 'Délai moyen d’intervention', value: '4h 32', hint: 'les 30 derniers jours', color: Color(0xFFE3F2FD)),
-              _Kpi(title: 'Volume collecté', value: '1 248 tonnes', hint: 'déchets ménagers et assimilés', color: Color(0xFFFFF8E1)),
-            ],
+          reports.when(
+            data: (items) {
+              final resolved = items.where((item) => item.status == ReportStatus.resolved).length;
+              final rate = items.isEmpty ? 0 : (resolved * 100 ~/ items.length);
+              return Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                children: [
+                  _Kpi(
+                    title: 'Taux de résolution',
+                    value: '$rate%',
+                    hint: 'sur ${items.length} signalement(s)',
+                    color: const Color(0xFFE8F5E9),
+                  ),
+                  const _Kpi(
+                    title: 'Délai moyen d’intervention',
+                    value: '—',
+                    hint: 'donnée indisponible',
+                    color: Color(0xFFE3F2FD),
+                  ),
+                  _Kpi(
+                    title: 'Signalements reçus',
+                    value: '${items.length}',
+                    hint: 'données Appwrite',
+                    color: const Color(0xFFFFF8E1),
+                  ),
+                ],
+              );
+            },
+            loading: () => const LinearProgressIndicator(),
+            error: (error, _) => Text('KPIs indisponibles : $error'),
           ),
           const SizedBox(height: 24),
           Row(
@@ -305,9 +329,15 @@ class AdminReportsCommScreen extends ConsumerWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        OutlinedButton(onPressed: () {}, child: const Text('Exporter PDF')),
+                        OutlinedButton(
+                          onPressed: () => _showUnavailable(context, 'Export PDF'),
+                          child: const Text('Exporter PDF'),
+                        ),
                         const SizedBox(width: 8),
-                        OutlinedButton(onPressed: () {}, child: const Text('Exporter CSV')),
+                        OutlinedButton(
+                          onPressed: () => _showUnavailable(context, 'Export CSV'),
+                          child: const Text('Exporter CSV'),
+                        ),
                       ],
                     ),
                   ),
@@ -345,10 +375,19 @@ class AdminReportsCommScreen extends ConsumerWidget {
                       onPressed: () async {
                         try {
                           await ref.read(functionsProviderSafe).createExecution(
-                                functionId: 'generateAdminReport',
+                                functionId: AppwriteConfig.generateAdminReportFn,
                                 body: '{"kind":"campaign"}',
                               );
-                        } catch (_) {}
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Campagne envoyée.')),
+                          );
+                        } catch (error) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Campagne indisponible : $error')),
+                          );
+                        }
                       },
                       child: const Text('Envoyer la campagne'),
                     ),
@@ -369,6 +408,12 @@ class AdminReportsCommScreen extends ConsumerWidget {
         subtitle: Text(s),
         trailing: TextButton(onPressed: () {}, child: const Text('Générer')),
       ),
+    );
+  }
+
+  void _showUnavailable(BuildContext context, String action) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$action indisponible : Function Appwrite non déployée.')),
     );
   }
 }

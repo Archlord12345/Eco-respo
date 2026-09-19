@@ -72,16 +72,18 @@ class RewardsScreen extends ConsumerWidget {
             ],
           ),
           catalog.when(
-            data: (items) => Row(
-              children: items.take(3).map((e) => Expanded(child: _item(context, ref, e, pts))).toList(),
-            ),
+            data: (items) {
+              final enabled = items.where((item) => item.enabled).take(3).toList();
+              return enabled.isEmpty
+                  ? const Text('Aucune récompense disponible.')
+                  : Row(
+                      children: enabled.map((e) => Expanded(child: _item(context, ref, e, pts))).toList(),
+                    );
+            },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (_, _) => Row(
-              children: [
-                Expanded(child: _fallback(AppAssets.rewardMtn, 'Crédit Mobile MoMo', 1000)),
-                Expanded(child: _fallback(AppAssets.rewardVoucher, 'Bons d\'achat', 1500)),
-                Expanded(child: _fallback(AppAssets.rewardPartner, 'Avantages partenaires', 2000)),
-              ],
+            error: (error, _) => Text(
+              'Catalogue indisponible : $error',
+              style: const TextStyle(color: AppColors.danger),
             ),
           ),
           const SizedBox(height: 16),
@@ -134,9 +136,25 @@ class RewardsScreen extends ConsumerWidget {
             Text(e.title, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
             Text('À partir de ${e.pointsCost} pts', style: const TextStyle(fontSize: 10)),
             TextButton(
-              onPressed: pts >= e.pointsCost
-                  ? () => ref.read(rewardRepositoryProvider).redeem(userId: ref.read(authProvider).user?.id ?? '', itemId: e.id)
-                  : null,
+              onPressed: pts < e.pointsCost
+                  ? null
+                  : () async {
+                      try {
+                        await ref.read(rewardRepositoryProvider).redeem(
+                              userId: ref.read(authProvider).user?.id ?? '',
+                              itemId: e.id,
+                            );
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Échange enregistré.')),
+                        );
+                      } catch (error) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Échange impossible : $error')),
+                        );
+                      }
+                    },
               child: const Text('Échanger'),
             ),
           ],
@@ -145,21 +163,6 @@ class RewardsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _fallback(String asset, String title, int cost) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Column(
-          children: [
-            AssetImageBox(asset: asset, height: 48, width: 48, radius: 8),
-            Text(title, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-            Text('À partir de $cost pts', style: const TextStyle(fontSize: 10)),
-            const Text('Échanger', style: TextStyle(color: AppColors.primaryGreen, fontWeight: FontWeight.w700)),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 final catalogProvider = FutureProvider<List<RewardItem>>((ref) {

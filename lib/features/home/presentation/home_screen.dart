@@ -1,7 +1,10 @@
+import 'package:appwrite/appwrite.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/appwrite/appwrite_client.dart';
+import '../../../core/appwrite/appwrite_config.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/eco_app_bar.dart';
@@ -89,9 +92,24 @@ class HomeScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
           SectionTitle('Notifications récentes', action: 'Voir tout', onAction: () => context.push('/history')),
-          _notif(AppAssets.notifCollecte, 'Votre collecte a bien été effectuée', 'Il y a 2 heures • Quartier Bastos'),
-          _notif(AppAssets.notifPoints, 'Vous avez gagné 50 points', 'Pour 2 kg triés à la collecte du 12 avr.'),
-          _notif(AppAssets.notifMap, 'Nouveau point de collecte disponible', 'Mfoundi • Il y a 1 jour'),
+          ref.watch(notificationsProvider).when(
+            data: (items) => items.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Text('Aucune notification récente.'),
+                  )
+                : Column(
+                    children: items.take(3).map(_notification).toList(),
+                  ),
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (error, _) => Text(
+              'Notifications indisponibles : $error',
+              style: const TextStyle(color: AppColors.danger),
+            ),
+          ),
         ],
       ),
     );
@@ -134,16 +152,35 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _notif(String asset, String title, String subtitle) {
+  Widget _notification(AppNotification notification) {
+    final asset = switch (notification.kind) {
+      'collecte' => AppAssets.notifCollecte,
+      'points' => AppAssets.notifPoints,
+      'map' => AppAssets.notifMap,
+      _ => AppAssets.notifCollecte,
+    };
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: AssetImageBox(asset: asset, height: 40, width: 40, radius: 10),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-      subtitle: Text(subtitle, style: const TextStyle(fontSize: 11)),
+      title: Text(notification.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+      subtitle: Text(notification.body, style: const TextStyle(fontSize: 11)),
     );
   }
 }
 
 final notificationsProvider = FutureProvider<List<AppNotification>>((ref) async {
-  return const [];
+  final userId = ref.watch(authProvider).user?.id;
+  if (userId == null) return const [];
+  final response = await ref.watch(databasesProvider).listDocuments(
+        databaseId: AppwriteConfig.databaseId,
+        collectionId: AppwriteConfig.notificationsCollection,
+        queries: [
+          Query.equal('userId', userId),
+          Query.orderDesc('createdAt'),
+          Query.limit(10),
+        ],
+      );
+  return response.documents
+      .map((document) => AppNotification.fromMap(document.data, id: document.$id))
+      .toList();
 });

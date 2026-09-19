@@ -242,9 +242,14 @@ class AppwriteRewardRepository implements RewardRepository {
         functionId: AppwriteConfig.computeRewardPointsFn,
         body: '{"userId":"$userId","itemId":"$itemId","action":"redeem"}',
       );
-      return int.tryParse(ex.responseBody) ?? 0;
-    } catch (_) {
-      return 0;
+      final points = int.tryParse(ex.responseBody);
+      if (points == null) {
+        throw const NetworkFailure('Réponse invalide du service de récompenses.');
+      }
+      return points;
+    } catch (e) {
+      if (e is NetworkFailure) rethrow;
+      throw NetworkFailure(_aw(e));
     }
   }
 
