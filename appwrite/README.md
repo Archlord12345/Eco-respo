@@ -166,4 +166,5 @@ Extensions : jpg, jpeg, png, webp, heic. Taille max 10 Mo.
 | `paymentWebhook` | Retours Orange Money / MTN MoMo |
 | `generateAdminReport` | Export PDF/CSV dashboard |
 
-Le client n’appelle que `Functions.createExecution`. Auth téléphone : `Account.createPhoneToken` puis `Account.createSession` (SDK 13, Appwrite 1.6).
+Le client n’appelle que `Functions.createExecution`. Authentification :
+`Account.create` puis `Account.createEmailPasswordSession` avec le SDK Dart 13.

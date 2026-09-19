@@ -81,6 +81,15 @@ Tous les visuels sont des PNG de couleur unie dans `assets/images/`. Conservez *
 - `lib/features/` — auth, reporting, collecte, carte, récompenses, profil, collecteur, admin
 - `lib/shared/models/` — documents 1:1 avec les collections Appwrite
 
+Profils d’application :
+
+- `mobile/` — profil citoyen Android/iOS, navigation bas de page et écrans des planches mobiles
+- `desktop/` — profil municipal Linux/Windows/macOS, sidebar et écrans du back-office
+
+Le code métier et les widgets partagés restent dans `lib/` afin que les deux
+profils utilisent les mêmes repositories Appwrite. Les plateformes Flutter se
+lancent depuis la racine avec `flutter run -d android` ou `flutter run -d linux`.
+
 Navigation : barre du bas sur mobile, `NavigationRail` / sidebar admin sur desktop (> 1024 px).
 
 ## Valkey

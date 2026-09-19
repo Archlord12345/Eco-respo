@@ -30,7 +30,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 onPageChanged: (i) => setState(() => _index = i),
                 children: const [
                   _Slide(
-                    image: AppAssets.welcomeHero,
+                    image: AppAssets.onboarding1,
                     title: 'Éco-Responsable',
                     subtitle: 'Plateforme citoyenne de gestion des déchets • Cameroun',
                     headline: 'Faites de chaque citoyen un acteur de la propreté urbaine',

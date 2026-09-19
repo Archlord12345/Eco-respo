@@ -1,13 +1,17 @@
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../core/appwrite/appwrite_client.dart';
 import '../../../core/appwrite/appwrite_config.dart';
 import '../../../core/constants/app_assets.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/reward_badge_card.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../shared/models/enums.dart';
+import '../../../shared/models/reward_item.dart';
 import '../../../shared/models/waste_report.dart';
 import '../../reporting/data/appwrite_report_repository.dart';
 
@@ -62,7 +66,7 @@ class AdminDashboardScreen extends ConsumerWidget {
               Expanded(
                 child: _card(
                   'Carte de chaleur des signalements',
-                  AssetImageBox(asset: AppAssets.heatmap, height: 280, width: double.infinity),
+                  _ReportsMap(reports: reports),
                 ),
               ),
               const SizedBox(width: 16),
@@ -260,7 +264,7 @@ class AdminZonesScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            Expanded(child: AssetImageBox(asset: AppAssets.zonesMap, height: 480, width: double.infinity)),
+            Expanded(child: _ZonesMap(zones: zones)),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
@@ -508,3 +512,98 @@ final adminCollectorsProvider = FutureProvider((ref) => ref.watch(collectorRepos
 final functionsProviderSafe = Provider((ref) {
   return ref.watch(functionsProvider);
 });
+
+class _ReportsMap extends StatelessWidget {
+  const _ReportsMap({required this.reports});
+
+  final AsyncValue<List<WasteReport>> reports;
+
+  @override
+  Widget build(BuildContext context) {
+    final markers = reports.valueOrNull
+            ?.where((report) => report.lat != 0 && report.lng != 0)
+            .map(
+              (report) => Marker(
+                point: LatLng(report.lat, report.lng),
+                width: 30,
+                height: 30,
+                child: Icon(
+                  Icons.location_on,
+                  color: report.status == ReportStatus.resolved
+                      ? AppColors.success
+                      : AppColors.danger,
+                  size: 28,
+                ),
+              ),
+            )
+            .toList() ??
+        const <Marker>[];
+    return SizedBox(
+      height: 280,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: FlutterMap(
+          options: const MapOptions(
+            initialCenter: AppConstants.yaounde,
+            initialZoom: 12,
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.eco.kf',
+            ),
+            MarkerLayer(markers: markers),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ZonesMap extends StatelessWidget {
+  const _ZonesMap({required this.zones});
+
+  final AsyncValue<List<Zone>> zones;
+
+  @override
+  Widget build(BuildContext context) {
+    final markers = zones.valueOrNull
+            ?.map(
+              (zone) => Marker(
+                point: LatLng(zone.centerLat, zone.centerLng),
+                width: 100,
+                height: 44,
+                child: Column(
+                  children: [
+                    Icon(Icons.location_on, color: _zoneColor(zone.color), size: 28),
+                    Text(zone.district, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+            )
+            .toList() ??
+        const <Marker>[];
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: FlutterMap(
+        options: const MapOptions(
+          initialCenter: AppConstants.yaounde,
+          initialZoom: 11.8,
+        ),
+        children: [
+          TileLayer(
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            userAgentPackageName: 'com.eco.kf',
+          ),
+          MarkerLayer(markers: markers),
+        ],
+      ),
+    );
+  }
+
+  Color _zoneColor(String value) {
+    final hex = value.replaceFirst('#', '');
+    final parsed = int.tryParse(hex, radix: 16);
+    return parsed == null ? AppColors.primaryGreen : Color(0xFF000000 | parsed);
+  }
+}

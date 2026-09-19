@@ -14,32 +14,6 @@ class AppwriteAuthRepository implements AuthRepository {
   final Account _account;
   final Databases _db;
 
-  @override
-  Future<String> requestOtp(String phoneE164) async {
-    try {
-      final token = await _account.createPhoneToken(
-        userId: ID.unique(),
-        phone: phoneE164,
-      );
-      return token.userId;
-    } on AppwriteException catch (e) {
-      throw AuthFailure(e.message ?? 'OTP impossible', code: e.code?.toString());
-    }
-  }
-
-  @override
-  Future<AppUser> verifyOtp({
-    required String userId,
-    required String secret,
-  }) async {
-    try {
-      await _account.createSession(userId: userId, secret: secret);
-      return await _loadOrCreate(userId);
-    } on AppwriteException catch (e) {
-      throw AuthFailure(e.message ?? 'Code invalide', code: e.code?.toString());
-    }
-  }
-
   Future<AppUser> _loadOrCreate(String userId) async {
     try {
       final doc = await _db.getDocument(

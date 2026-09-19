@@ -40,37 +40,21 @@ class _FakeAuthRepository implements AuthRepository {
   );
 
   @override
-  Future<String> requestOtp(String phoneE164) async => 'user-otp';
-
-  @override
   Future<AppUser> upsertProfile(AppUser user) async => stored = user;
 
   @override
   Future<void> updateProfile(AppUser user) async => stored = user;
 
-  @override
-  Future<AppUser> verifyOtp({
-    required String userId,
-    required String secret,
-  }) async {
-    stored = AppUser(
-      id: userId,
-      name: 'Moussa',
-      phone: '+237690000000',
-      city: 'Yaoundé',
-      role: UserRole.citizen,
-      points: 0,
-    );
-    return stored!;
-  }
 }
 
 void main() {
-  test('AuthRepository factice : OTP puis session', () async {
+  test('AuthRepository factice : inscription email puis session', () async {
     final repo = _FakeAuthRepository();
-    final id = await repo.requestOtp('+237693456789');
-    expect(id, 'user-otp');
-    final user = await repo.verifyOtp(userId: id, secret: '123456');
+    final user = await repo.registerEmail(
+      email: 'moussa@example.com',
+      password: 'password123',
+      name: 'Moussa',
+    );
     expect(user.name, 'Moussa');
     expect(await repo.currentUser(), isNotNull);
     await repo.logout();

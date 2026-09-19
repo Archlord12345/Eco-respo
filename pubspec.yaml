@@ -41,3 +41,11 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/images/auth/
+    - assets/images/logos/
+    - assets/images/map/
+    - assets/images/payments/
+    - assets/images/profile/
+    - assets/images/reporting/
+    - assets/images/rewards/
+    - assets/images/shared/

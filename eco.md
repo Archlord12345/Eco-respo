@@ -57,7 +57,7 @@ Passe les valeurs sensibles (`endpoint`, `projectId`) via `--dart-define` au lan
 
 | Service Appwrite | Usage dans le projet |
 |---|---|
-| **Account (Auth)** | Inscription/connexion par téléphone + OTP (`account.createPhoneSession` / `updatePhoneSession`), gestion de session, rôles via Teams ou attribut `role` en préférences utilisateur |
+| **Account (Auth)** | Inscription/connexion par nom, email et mot de passe (`account.create` / `createEmailPasswordSession`), gestion de session, rôles via Teams ou attribut `role` en préférences utilisateur |
 | **Databases** | Collections `waste_reports`, `collection_requests`, `collectors`, `reward_items`, `zones`, `users` — avec permissions par document (un citoyen ne voit que ses propres signalements/demandes ; un collecteur voit les demandes de sa zone ; un admin voit tout) |
 | **Storage** | Bucket `report_photos` (photos de signalement), bucket `collection_proofs` (preuves de collecte) |
 | **Realtime** | Abonnement aux changements sur `waste_reports` (suivi de statut en direct côté citoyen) et sur `collection_requests` (position/statut du collecteur en direct) |
@@ -107,7 +107,7 @@ lib/
 │   ├── utils/ (responsive_helper.dart)
 │   └── widgets/ (composants réutilisables)
 ├── features/
-│   ├── auth/            # Account Appwrite (phone OTP)
+│   ├── auth/            # Account Appwrite (email + mot de passe)
 │   ├── reporting/        # Databases + Storage (waste_reports)
 │   ├── collection_request/ # Databases + Realtime + Functions (matchCollector)
 │   ├── collector/
@@ -122,7 +122,7 @@ lib/
 ### 8. Écrans à générer (avec navigation fonctionnelle entre eux)
 
 **Côté Citoyen**
-1. Onboarding (3 slides) → Inscription téléphone/OTP (Appwrite Account) → Sélection ville/quartier
+1. Onboarding (3 slides) → Inscription nom/email/mot de passe (Appwrite Account) → Sélection ville/quartier
 2. Accueil : résumé d'impact (points, kg triés, CO2 évité), actions rapides, notifications
 3. Signalement : capture photo (`image_picker` → upload Storage), géolocalisation sur carte, catégorie, confirmation, suivi Realtime du statut
 4. Demande de collecte : type/volume, date/heure, récapitulatif paiement, suivi de statut en direct (position collecteur)
