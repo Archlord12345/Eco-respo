@@ -163,21 +163,21 @@ case "$cmd" in
     [[ -n "${1:-}" ]] || { echo "post <path> [json] requis" >&2; exit 1; }
     path="$1"
     [[ "$path" == /* ]] || path="/$path"
-    aw POST "$path" "${2:-{}}"
+    aw POST "$path" "${2-}"
     ;;
   put|PUT)
     need_key
     [[ -n "${1:-}" ]] || { echo "put <path> [json] requis" >&2; exit 1; }
     path="$1"
     [[ "$path" == /* ]] || path="/$path"
-    aw PUT "$path" "${2:-{}}"
+    aw PUT "$path" "${2-}"
     ;;
   patch|PATCH)
     need_key
     [[ -n "${1:-}" ]] || { echo "patch <path> [json] requis" >&2; exit 1; }
     path="$1"
     [[ "$path" == /* ]] || path="/$path"
-    aw PATCH "$path" "${2:-{}}"
+    aw PATCH "$path" "${2-}"
     ;;
   delete|DELETE)
     need_key
