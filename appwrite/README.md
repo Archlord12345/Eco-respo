@@ -31,6 +31,27 @@ final client = Client()
 Ne pas activer `setSelfSigned(true)` sur l'endpoint de production. Ce réglage
 est uniquement destiné à une instance locale avec certificat autosigné.
 
+## Vérification de l’instance
+
+Les requêtes d’administration doivent passer par `tool/appwrite.sh` :
+
+```bash
+tool/appwrite.sh databases
+tool/appwrite.sh collections
+tool/appwrite.sh buckets
+tool/appwrite.sh functions
+tool/appwrite.sh documents reward_items
+tool/appwrite.sh documents zones
+```
+
+État vérifié le 19 septembre 2026 : la base, les collections et les deux
+buckets sont actifs ; `reward_items` contient trois documents et `zones` cinq
+documents. Aucune Function ni aucun provider Messaging n’est encore configuré.
+
+Pour lire les plateformes et l’état de santé, la clé doit aussi posséder les
+scopes `platforms.read` et `health.read`. Pour déployer les Functions, ajouter
+`functions.read`, `functions.write`, `execution.read` et `execution.write`.
+
 ## Collections
 
 Permissions collection (MVP) : `read(any)`, `create/update/delete(users)` + **document security** activé. À durcir ensuite avec Teams `admins` / `collectors`.

@@ -92,12 +92,25 @@ Valkey n’est **jamais** appelé depuis Flutter. Le classement et le matching c
 Voir `appwrite/README.md`. Provisionnement (clé serveur, hors client) :
 
 ```bash
-cp .env.example .env   # puis coller APPWRITE_API_KEY
+printf 'APPWRITE_API_KEY=...\n' > .env   # clé serveur locale uniquement
 tool/appwrite.sh ping
 APPWRITE_API_KEY=... python3 tool/setup_appwrite.py
 ```
 
 Le script `tool/appwrite.sh` lit `.env` et parle à l’API REST (ping, collections, documents, buckets, functions). La clé n’est jamais dans le client Flutter.
+
+## État du BaaS
+
+Le projet Appwrite contient actuellement la base `eco_responsable_db`, les
+collections prévues, les buckets `report_photos` et `collection_proofs`, ainsi
+que les données initiales des récompenses et des cinq zones de Yaoundé.
+
+Les Functions `matchCollector`, `computeRewardPoints`, `paymentWebhook` et
+`generateAdminReport` doivent encore être déployées avec leur code serveur. Un
+provider Messaging FCM/APNs doit également être configuré avant d’activer les
+notifications push. Une clé d’administration complète nécessite au minimum les
+scopes `health.read`, `platforms.read`, `platforms.write`, les scopes
+`functions.*`, `execution.*`, et les scopes Messaging nécessaires.
 
 ## Tests
 
