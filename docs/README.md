@@ -30,6 +30,8 @@ fonctionnalités réelles, avec une équipe de **2 ingénieurs backend et
 | [`plan/07-frontend-web.md`](plan/07-frontend-web.md) | Pour le frontend web : PWA, CORS/plateforme, responsive, déploiement |
 | [`plan/08-carte-temps-reel.md`](plan/08-carte-temps-reel.md) | Spécification de la carte réelle (positions, signalements, collecteurs en direct, itinéraires) — transverse |
 | [`plan/09-equipe-contrats-recette.md`](plan/09-equipe-contrats-recette.md) | Organisation des 5 ingénieurs, dépendances entre équipes, contrats d'interface, definition of done, scénarios de recette |
+| [`plan/PROMPT-CAHIERS-DES-CHARGES.md`](plan/PROMPT-CAHIERS-DES-CHARGES.md) | Invite prête à coller dans Claude pour générer les 6 cahiers des charges (général, backend, mobile, desktop, web, plan 7 jours) en PDF + DOCX |
+| [`../eco-responsable-docs.zip`](../eco-responsable-docs.zip) | Archive à la racine : tous ces `.md` + logo (`logo.png`, `logo_white.png`, `app_icon.png`), à joindre à Claude |
 | [`design/`](design/) | Les 7 planches de maquettes + sources des visuels |
 | [`marketing/`](marketing/) | Affiches, bannière, post réseaux sociaux |
 
