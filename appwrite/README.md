@@ -82,6 +82,18 @@ curl -H 'X-Appwrite-Project: eco-responsable-cm' \
 deux buckets ; `reward_items` contient trois lignes et `zones` cinq lignes.
 Aucune Function ni provider Messaging n’est encore déployé.
 
+## Authentification (Account)
+
+- **Téléphone + code à 6 chiffres** : aucun provider SMS n’est nécessaire. Le
+  client crée un compte email/mot de passe avec l’identifiant technique
+  `<numéro sans +>@phone.eco-responsable.cm` et le mot de passe
+  `sha256("eco-responsable|<numéro>|<code>")`, puis renseigne
+  `account.updatePhone`. Le code est choisi par l’utilisateur et se change via
+  `account.updatePassword`.
+- **Email + mot de passe** classique.
+- Le profil applicatif (ville, rôle, points…) vit dans la table `users`, avec
+  `rowId = $id` du compte.
+
 ## Tables
 
 Permissions table (MVP) : `read(any)`, `create/update/delete(users)` +
@@ -96,7 +108,7 @@ Permissions table (MVP) : `read(any)`, `create/update/delete(users)` +
 | email | varchar 128 | |
 | city | varchar 64 | défaut `Yaoundé` |
 | district | varchar 64 | |
-| role | enum `citizen`, `collector`, `admin` | défaut `citizen` |
+| role | enum `citizen`, `collector`, `operator`, `admin` | défaut `citizen` ; `operator` = entreprise de collecte |
 | points | integer | défaut 0 |
 | language | varchar 8 | `fr` / `en` |
 | notificationsEnabled | boolean | défaut `true` |

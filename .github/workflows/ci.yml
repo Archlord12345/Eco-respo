@@ -1,19 +1,17 @@
 # ============================================================================
-#  Éco-Responsable — pipeline unique
+#  Éco-Responsable — pipeline unique (monorepo)
 #
 #  Un seul fichier, découpé en sous-workflows (jobs) chaînés :
 #
-#    1. qualite      analyse statique + tests (bloquant pour tout le reste)
-#    2. android      APK release (signé debug, installable) + AAB
-#    3. linux        bundle Linux x64 (.tar.gz)
-#    4. windows      bundle Windows x64 (.zip)
-#    5. macos        .app macOS (non signé)
-#    6. ios          .app iOS sans signature (vérification de compilation)
-#    7. publication  release GitHub avec tous les artefacts, sur tag v*
+#    1. qualite      analyse + tests du cœur partagé (shared/) et des 3 apps
+#    2. mobile       Android APK + AAB (mobile/)          [+ iOS sans signature]
+#    3. desktop      Linux .tar.gz / Windows .zip / macOS .app (desktop/)
+#    4. web          bundle web statique (web/)
+#    5. publication  release GitHub avec tous les artefacts, sur tag v*
 #
 #  Déclencheurs : push master / tags v* / pull request / manuel.
-#  Sur PR, seuls qualite + android + linux tournent (rapide) ; les autres
-#  plateformes tournent sur master, sur tag, ou à la demande.
+#  Sur PR, seuls qualite + android + linux + web tournent (rapide) ; iOS,
+#  Windows et macOS tournent sur master, sur tag, ou à la demande.
 # ============================================================================
 name: CI
 
@@ -25,7 +23,7 @@ on:
   workflow_dispatch:
     inputs:
       toutes_plateformes:
-        description: "Construire aussi Windows, macOS et iOS"
+        description: "Construire aussi iOS, Windows et macOS"
         type: boolean
         default: true
 
@@ -39,6 +37,9 @@ env:
   # Valeurs publiques (identifient le projet Appwrite Cloud, jamais la clé serveur).
   APPWRITE_ENDPOINT: ${{ vars.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1' }}
   APPWRITE_PROJECT_ID: ${{ vars.APPWRITE_PROJECT_ID || 'eco-responsable-cm' }}
+  DEFINES: >-
+    --dart-define=APPWRITE_ENDPOINT=${{ vars.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1' }}
+    --dart-define=APPWRITE_PROJECT_ID=${{ vars.APPWRITE_PROJECT_ID || 'eco-responsable-cm' }}
 
 defaults:
   run:
@@ -46,12 +47,12 @@ defaults:
 
 jobs:
   # --------------------------------------------------------------------------
-  # 1. Qualité : analyse + tests
+  # 1. Qualité : analyse + tests (shared + mobile + desktop + web)
   # --------------------------------------------------------------------------
   qualite:
     name: "1 · Analyse & tests"
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -61,31 +62,45 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Dépendances + localisation
+      - name: Cœur partagé — dépendances + l10n
+        working-directory: shared
         run: |
           flutter pub get
           flutter gen-l10n
 
-      - name: Analyse statique
+      - name: Cœur partagé — analyse statique
+        working-directory: shared
         run: flutter analyze --fatal-infos
 
-      - name: Tests unitaires et widgets
+      - name: Cœur partagé — tests
+        working-directory: shared
         run: flutter test --coverage --reporter expanded
+
+      - name: Applications — analyse statique
+        run: |
+          for app in mobile desktop web; do
+            echo "::group::$app"
+            (cd "$app" && flutter pub get && flutter analyze --fatal-infos)
+            echo "::endgroup::"
+          done
 
       - uses: actions/upload-artifact@v4
         with:
           name: couverture-lcov
-          path: coverage/lcov.info
+          path: shared/coverage/lcov.info
           if-no-files-found: ignore
 
   # --------------------------------------------------------------------------
-  # 2. Android
+  # 2. Mobile — Android
   # --------------------------------------------------------------------------
   android:
-    name: "2 · Android (APK + AAB)"
+    name: "2 · Mobile — Android (APK + AAB)"
     needs: qualite
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: mobile
     steps:
       - uses: actions/checkout@v4
 
@@ -106,37 +121,71 @@ jobs:
         run: flutter pub get
 
       - name: Build APK release
-        run: |
-          flutter build apk --release \
-            --dart-define=APPWRITE_ENDPOINT="$APPWRITE_ENDPOINT" \
-            --dart-define=APPWRITE_PROJECT_ID="$APPWRITE_PROJECT_ID"
+        run: flutter build apk --release $DEFINES
 
       - name: Build AppBundle release
-        run: |
-          flutter build appbundle --release \
-            --dart-define=APPWRITE_ENDPOINT="$APPWRITE_ENDPOINT" \
-            --dart-define=APPWRITE_PROJECT_ID="$APPWRITE_PROJECT_ID"
+        run: flutter build appbundle --release $DEFINES
 
       - name: Renommer les artefacts
         run: |
           mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-release.apk dist/eco-responsable-android.apk
-          cp build/app/outputs/bundle/release/app-release.aab dist/eco-responsable-android.aab
+          cp build/app/outputs/flutter-apk/app-release.apk dist/eco-responsable-mobile-android.apk
+          cp build/app/outputs/bundle/release/app-release.aab dist/eco-responsable-mobile-android.aab
 
       - uses: actions/upload-artifact@v4
         with:
-          name: android
-          path: dist/*
+          name: mobile-android
+          path: mobile/dist/*
           if-no-files-found: error
 
   # --------------------------------------------------------------------------
-  # 3. Linux
+  # 2b. Mobile — iOS (compilation sans signature)
+  # --------------------------------------------------------------------------
+  ios:
+    name: "2 · Mobile — iOS (sans signature)"
+    needs: qualite
+    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.toutes_plateformes)
+    runs-on: macos-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Build iOS
+        run: |
+          flutter pub get
+          flutter build ios --release --no-codesign $DEFINES
+
+      - name: Archiver
+        run: |
+          mkdir -p dist
+          ditto -c -k --keepParent build/ios/iphoneos/Runner.app dist/eco-responsable-mobile-ios-unsigned.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mobile-ios
+          path: mobile/dist/*
+          if-no-files-found: error
+
+  # --------------------------------------------------------------------------
+  # 3. Desktop — Linux
   # --------------------------------------------------------------------------
   linux:
-    name: "3 · Linux x64"
+    name: "3 · Desktop — Linux x64"
     needs: qualite
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: desktop
     steps:
       - uses: actions/checkout@v4
 
@@ -158,30 +207,31 @@ jobs:
         run: |
           flutter config --enable-linux-desktop
           flutter pub get
-          flutter build linux --release \
-            --dart-define=APPWRITE_ENDPOINT="$APPWRITE_ENDPOINT" \
-            --dart-define=APPWRITE_PROJECT_ID="$APPWRITE_PROJECT_ID"
+          flutter build linux --release $DEFINES
 
       - name: Archiver
         run: |
           mkdir -p dist
-          tar -C build/linux/x64/release/bundle -czf dist/eco-responsable-linux-x64.tar.gz .
+          tar -C build/linux/x64/release/bundle -czf dist/eco-responsable-desktop-linux-x64.tar.gz .
 
       - uses: actions/upload-artifact@v4
         with:
-          name: linux
-          path: dist/*
+          name: desktop-linux
+          path: desktop/dist/*
           if-no-files-found: error
 
   # --------------------------------------------------------------------------
-  # 4. Windows
+  # 3b. Desktop — Windows
   # --------------------------------------------------------------------------
   windows:
-    name: "4 · Windows x64"
+    name: "3 · Desktop — Windows x64"
     needs: qualite
     if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.toutes_plateformes)
     runs-on: windows-latest
     timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: desktop
     steps:
       - uses: actions/checkout@v4
 
@@ -195,31 +245,32 @@ jobs:
         run: |
           flutter config --enable-windows-desktop
           flutter pub get
-          flutter build windows --release \
-            --dart-define=APPWRITE_ENDPOINT="$APPWRITE_ENDPOINT" \
-            --dart-define=APPWRITE_PROJECT_ID="$APPWRITE_PROJECT_ID"
+          flutter build windows --release $DEFINES
 
       - name: Archiver
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
-          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dist/eco-responsable-windows-x64.zip
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dist/eco-responsable-desktop-windows-x64.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: windows
-          path: dist/*
+          name: desktop-windows
+          path: desktop/dist/*
           if-no-files-found: error
 
   # --------------------------------------------------------------------------
-  # 5. macOS
+  # 3c. Desktop — macOS
   # --------------------------------------------------------------------------
   macos:
-    name: "5 · macOS"
+    name: "3 · Desktop — macOS"
     needs: qualite
     if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.toutes_plateformes)
     runs-on: macos-latest
     timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: desktop
     steps:
       - uses: actions/checkout@v4
 
@@ -233,30 +284,30 @@ jobs:
         run: |
           flutter config --enable-macos-desktop
           flutter pub get
-          flutter build macos --release \
-            --dart-define=APPWRITE_ENDPOINT="$APPWRITE_ENDPOINT" \
-            --dart-define=APPWRITE_PROJECT_ID="$APPWRITE_PROJECT_ID"
+          flutter build macos --release $DEFINES
 
       - name: Archiver
         run: |
           mkdir -p dist
-          ditto -c -k --keepParent build/macos/Build/Products/Release/*.app dist/eco-responsable-macos.zip
+          ditto -c -k --keepParent build/macos/Build/Products/Release/*.app dist/eco-responsable-desktop-macos.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: macos
-          path: dist/*
+          name: desktop-macos
+          path: desktop/dist/*
           if-no-files-found: error
 
   # --------------------------------------------------------------------------
-  # 6. iOS (compilation sans signature)
+  # 4. Web
   # --------------------------------------------------------------------------
-  ios:
-    name: "6 · iOS (sans signature)"
+  web:
+    name: "4 · Web"
     needs: qualite
-    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.toutes_plateformes)
-    runs-on: macos-latest
-    timeout-minutes: 45
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: web
     steps:
       - uses: actions/checkout@v4
 
@@ -266,31 +317,29 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Build iOS
+      - name: Build web
         run: |
           flutter pub get
-          flutter build ios --release --no-codesign \
-            --dart-define=APPWRITE_ENDPOINT="$APPWRITE_ENDPOINT" \
-            --dart-define=APPWRITE_PROJECT_ID="$APPWRITE_PROJECT_ID"
+          flutter build web --release --base-href / $DEFINES
 
       - name: Archiver
         run: |
           mkdir -p dist
-          ditto -c -k --keepParent build/ios/iphoneos/Runner.app dist/eco-responsable-ios-unsigned.zip
+          tar -C build/web -czf dist/eco-responsable-web.tar.gz .
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ios
-          path: dist/*
+          name: web
+          path: web/dist/*
           if-no-files-found: error
 
   # --------------------------------------------------------------------------
-  # 7. Publication (tags v* uniquement)
+  # 5. Publication (tags v* uniquement)
   # --------------------------------------------------------------------------
   publication:
-    name: "7 · Release GitHub"
+    name: "5 · Release GitHub"
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [android, linux, windows, macos, ios]
+    needs: [android, ios, linux, windows, macos, web]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

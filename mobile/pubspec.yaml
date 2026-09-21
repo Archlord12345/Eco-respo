@@ -1,0 +1,31 @@
+name: eco_mobile
+description: Éco-Responsable — application mobile citoyens et collecteurs (Android, iOS).
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  eco_core:
+    path: ../shared
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: ../shared/assets/branding/app_icon.png
+  adaptive_icon_background: "#2E7D32"
+  adaptive_icon_foreground: ../shared/assets/branding/app_icon_foreground.png
+  adaptive_icon_monochrome: ../shared/assets/branding/app_icon_monochrome.png

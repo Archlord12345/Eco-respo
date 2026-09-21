@@ -2,99 +2,151 @@
 
 Plateforme citoyenne de gestion des déchets pour le Cameroun : signalement de
 décharges sauvages, collecte à domicile payée en Mobile Money, tri incitatif
-avec points et récompenses, application collecteur et back-office municipal.
+avec points et récompenses, application collecteur, back-office municipal et
+back-office des entreprises de collecte.
 
-Application Flutter unique (Android, iOS, Linux, Windows, macOS) branchée sur
-**Appwrite Cloud** — endpoint `https://fra.cloud.appwrite.io/v1`, projet
-`eco-responsable-cm`.
+![Bannière](docs/marketing/banniere_municipalites.png)
+
+Monorepo Flutter branché sur **Appwrite Cloud** — endpoint
+`https://fra.cloud.appwrite.io/v1`, projet `eco-responsable-cm`.
 
 | | |
 |---|---|
 | Flutter / Dart | 3.47.1 stable / SDK ^3.13 |
 | Backend | Appwrite Cloud (région `fra`), SDK Dart `appwrite ^26.2` (API TablesDB) |
-| État | Riverpod 3 · Navigation go_router 18 · Cartes flutter_map 8 |
-| Design | Planches dans [`docs/design/`](docs/design/) · thème `lib/core/theme/` |
-| CI | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — 7 sous-workflows |
+| État | Riverpod 3 · Navigation go_router 18 · Cartes flutter_map 8 · Graphiques fl_chart |
+| Design | Planches dans [`docs/design/`](docs/design/) · thème `shared/lib/core/theme/` |
+| Marketing | Affiches et visuels dans [`docs/marketing/`](docs/marketing/) |
+| CI | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — un workflow, 5 sous-workflows |
 
 ---
 
 ## Sommaire
 
-1. [Fonctionnalités](#1-fonctionnalités)
-2. [Démarrage rapide](#2-démarrage-rapide)
-3. [Configuration Appwrite](#3-configuration-appwrite)
-4. [Architecture du code](#4-architecture-du-code)
-5. [Design system et visuels](#5-design-system-et-visuels)
-6. [Backend : schéma, outils, état](#6-backend--schéma-outils-état)
-7. [Intégration continue et livraison](#7-intégration-continue-et-livraison)
-8. [Tests et qualité](#8-tests-et-qualité)
-9. [Feuille de route](#9-feuille-de-route)
+1. [Organisation du dépôt](#1-organisation-du-dépôt)
+2. [Fonctionnalités par profil](#2-fonctionnalités-par-profil)
+3. [Démarrage rapide](#3-démarrage-rapide)
+4. [Authentification](#4-authentification)
+5. [Configuration Appwrite](#5-configuration-appwrite)
+6. [Architecture du code partagé](#6-architecture-du-code-partagé)
+7. [Design system, icônes et visuels](#7-design-system-icônes-et-visuels)
+8. [Backend : schéma, outils, état](#8-backend--schéma-outils-état)
+9. [Intégration continue et livraison](#9-intégration-continue-et-livraison)
+10. [Tests et qualité](#10-tests-et-qualité)
+11. [Feuille de route](#11-feuille-de-route)
 
 ---
 
-## 1. Fonctionnalités
+## 1. Organisation du dépôt
 
-### Profil citoyen (mobile)
+```
+ECo/
+├── shared/      package Dart `eco_core` : TOUT le code métier et les écrans
+│   ├── lib/     core (appwrite, router, theme, widgets), features, shared/models, l10n
+│   ├── assets/  images de l'app + branding (icônes d'application)
+│   └── test/
+├── mobile/      app Android / iOS  → citoyens et collecteurs          (AppTarget.mobile)
+├── desktop/     app Linux / Windows / macOS → mairie + entreprises    (AppTarget.desktop)
+├── web/         app web → tous les espaces, mise en page adaptative    (AppTarget.web)
+├── appwrite/    documentation du schéma backend
+├── appwrite.config.json   schéma déclaratif (généré par tool/gen_appwrite_config.py)
+├── tool/        scripts Appwrite (CLI, curl, génération du schéma)
+├── docs/design/     planches de référence + sources des visuels
+└── docs/marketing/  affiches publicitaires, bannière, post réseaux sociaux
+```
 
-| Écran | Rôle | Planche |
+Chaque app (`mobile/`, `desktop/`, `web/`) ne contient qu'un `main.dart` de
+trois lignes, sa configuration native et ses icônes ; elle dépend de
+`eco_core` par chemin (`path: ../shared`). La **cible** (`AppTarget`) est
+injectée au démarrage et pilote :
+
+| Cible | Espaces exposés | Accueil après connexion |
 |---|---|---|
-| Onboarding (3 slides) → connexion / inscription | Découverte, compte Appwrite (email + mot de passe), choix de la ville | 1 |
-| Accueil | Impact de la semaine (points, kg triés, CO₂), objectif mensuel, raccourcis, notifications récentes | 1 |
-| Signaler une décharge | Photo (caméra ou fichier), géolocalisation, catégorie, urgence → table `waste_reports` + bucket `report_photos` | 2 |
-| Demander une collecte | Type de déchet, volume, créneau, récurrence, paiement MTN MoMo / Orange Money / Afriland → `collection_requests` + Function `matchCollector` | 2 |
-| Carte | Points de collecte et signalements autour de soi (flutter_map / OSM) | 2 |
-| Récompenses | Solde de points, niveaux Bronze / Argent / Or, catalogue `reward_items`, échange via Function `computeRewardPoints` | 3 |
-| Profil et historique | Informations, langue, notifications, historique des signalements et collectes | 3 |
-| Suivi et notifications | Détail d’un signalement, statut temps réel (Realtime), fil de notifications | 7 |
-
-### Profil collecteur (mobile)
-
-Disponibilité en ligne / hors ligne, demandes à proximité, tournée du jour,
-confirmation de collecte avec photo de preuve (`collection_proofs`) et poids,
-historique des interventions, revenus (planches 5 et 6).
-
-### Back-office municipal (desktop, > 1024 px)
-
-Tableau de bord (taux de résolution, délais, volumes, carte de chaleur),
-gestion des signalements avec affectation d’opérateur, zones et opérateurs,
-rapports et campagnes (planche 4). Même code, même Appwrite : la navigation
-bascule sur une `NavigationRail` / sidebar selon la largeur.
-
-### Hors ligne
-
-Les signalements créés sans réseau sont mis en file (`core/offline/sync_queue.dart`,
-Hive) et rejoués à la reconnexion.
+| `mobile` | citoyen, collecteur | `/home` ou `/collector` ; admin/opérateur redirigés vers `/home` |
+| `desktop` | mairie (`/admin`), entreprise de collecte (`/company`) | citoyen / collecteur → écran `/restricted` |
+| `web` | tous | selon le rôle |
 
 ---
 
-## 2. Démarrage rapide
+## 2. Fonctionnalités par profil
 
-Prérequis : Flutter 3.47 stable, et pour Android un JDK 21 (AGP 9.1 / Gradle 9.3).
+### Citoyen (mobile, web) — planches 1, 2, 3, 7
+
+| Écran | Contenu |
+|---|---|
+| Onboarding 3 slides → inscription | Téléphone + **code à 6 chiffres choisi par l'utilisateur** (ou email + mot de passe), choix de la ville |
+| Accueil | Impact réel (points, kg valorisés, CO₂ évité via `myImpactProvider`), objectif mensuel, raccourcis, 3 dernières notifications, badges |
+| Signaler une décharge | Photo (caméra / galerie / fichier), géolocalisation, catégorie, urgence → `waste_reports` + bucket `report_photos` ; file hors ligne |
+| Détail d'un signalement | Photo, carte, chronologie de statut temps réel, opérateur affecté |
+| Demander une collecte | Type, volume, créneau, récurrence, position GPS, paiement MTN MoMo / Orange Money / Afriland → `collection_requests` |
+| Suivi d'une demande | Collecteur assigné (nom, téléphone, appel direct), ETA, stepper de statut Realtime, paiement |
+| Carte | Signalements et points de collecte autour de soi (OSM) |
+| Récompenses | Solde, niveaux Bronze / Argent / Or, catalogue `reward_items`, échange (Function ou débit direct) |
+| Notifications | Fil filtrable (toutes / non lues / collectes / points / alertes), marquage lu, navigation contextuelle |
+| Profil, historique, paramètres | KPIs réels, langue, notifications, changement du code à 6 chiffres, déconnexion |
+
+### Collecteur (mobile, web) — planches 5, 6
+
+Accueil avec disponibilité en ligne / hors ligne et demandes en attente à
+proximité, acceptation d'une demande, tournée du jour (carte + itinéraire,
+arrêts numérotés), détail d'un arrêt (appel, navigation), confirmation avec
+photo de preuve (`collection_proofs`) et poids réel → points crédités au
+citoyen et notification, historique des interventions, revenus (graphique
+hebdomadaire, cumul, versement Mobile Money).
+
+### Mairie — back-office (desktop, web) — planche 4
+
+| Écran | Contenu |
+|---|---|
+| Tableau de bord | Taux de résolution, délai moyen d'intervention, volume collecté, signalements ouverts ; carte de chaleur des signalements ; courbe créés / résolus sur 30 jours ; répartition par type de déchet |
+| Gestion des signalements | Tableau filtrable (recherche, statut, urgence), détail latéral, **affectation d'un opérateur**, prise en charge, résolution, réouverture, export CSV |
+| Zones et opérateurs | Carte des zones, création / édition de zone (quartier, fréquence, couleur, centre), affectation d'opérateurs par zone, liste des opérateurs partenaires |
+| Rapports et communication | Rapports général / par zone / par opérateur / signalements (Function `generateAdminReport` puis repli CSV), **campagnes citoyennes** déposées dans les notifications in-app (toute la commune ou un quartier) |
+| Paramètres | Profil, organisation, bascule de rôle, connexion Appwrite |
+
+### Entreprise de collecte — back-office (desktop, web)
+
+Tableau de bord (demandes en attente, collectes en cours, volume, revenus du
+mois, graphique), **dispatch** des demandes vers les collecteurs de la flotte,
+gestion de la flotte (ajout / édition de collecteurs, disponibilité), revenus
+et versements.
+
+---
+
+## 3. Démarrage rapide
+
+Prérequis : Flutter 3.47 stable ; Android : JDK 21 ; Linux :
+`clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev libwebkit2gtk-4.1-dev`.
 
 ```bash
 git clone https://github.com/Archlord12345/Eco-respo.git
 cd Eco-respo
-flutter pub get
 
 # Les identifiants projet passent en --dart-define (valeurs par défaut identiques).
-flutter run -d linux \
-  --dart-define=APPWRITE_ENDPOINT=https://fra.cloud.appwrite.io/v1 \
-  --dart-define=APPWRITE_PROJECT_ID=eco-responsable-cm
+DEFINES="--dart-define=APPWRITE_ENDPOINT=https://fra.cloud.appwrite.io/v1 \
+         --dart-define=APPWRITE_PROJECT_ID=eco-responsable-cm"
 
-flutter run -d android   # paquet com.eco.kf
-flutter run -d macos
-flutter run -d windows
+(cd mobile  && flutter pub get && flutter run -d android $DEFINES)   # paquet com.eco.kf
+(cd desktop && flutter pub get && flutter run -d linux   $DEFINES)   # ou windows / macos
+(cd web     && flutter pub get && flutter run -d chrome  $DEFINES)
 ```
 
 Builds release :
 
 ```bash
-flutter build apk --release        # build/app/outputs/flutter-apk/app-release.apk
-flutter build appbundle --release
-flutter build linux --release      # build/linux/x64/release/bundle/
-flutter build windows --release
-flutter build macos --release
-flutter build ios --release --no-codesign
+(cd mobile  && flutter build apk --release && flutter build appbundle --release)
+(cd mobile  && flutter build ios --release --no-codesign)
+(cd desktop && flutter build linux --release)      # build/linux/x64/release/bundle/
+(cd desktop && flutter build windows --release)
+(cd desktop && flutter build macos --release)
+(cd web     && flutter build web --release)        # build/web/ → hébergeur statique
+```
+
+Régénérer les icônes d'application après modification de
+`shared/assets/branding/app_icon.png` :
+
+```bash
+for a in mobile desktop web; do (cd $a && dart run flutter_launcher_icons); done
 ```
 
 Instance locale avec certificat autosigné : ajouter
@@ -102,34 +154,51 @@ Instance locale avec certificat autosigné : ajouter
 
 ---
 
-## 3. Configuration Appwrite
+## 4. Authentification
+
+Deux modes, tous deux via Appwrite `Account` :
+
+1. **Téléphone + code à 6 chiffres** (par défaut, planche 1). L'utilisateur
+   saisit son numéro (+237) puis **crée lui-même son code secret à 6
+   chiffres** ; ce code lui sert ensuite à se connecter. **Aucun SMS n'est
+   envoyé** — aucune passerelle Messaging n'est requise.
+   Sous le capot (`AppwriteAuthRepository`) : l'identifiant technique est
+   `237XXXXXXXXX@phone.eco-responsable.cm` et le mot de passe Appwrite est
+   `sha256("eco-responsable|<numéro>|<code>")` (64 caractères, dérivé
+   côté client de façon déterministe). Le numéro est aussi enregistré sur le
+   compte (`account.updatePhone`) et dans le profil `users`. Le code se change
+   dans *Paramètres → Sécurité*.
+2. **Email + mot de passe** (≥ 8 caractères), accessible depuis l'écran
+   téléphone via « Continuer avec un email ».
+
+Après inscription, l'utilisateur choisit sa ville / son quartier (`/city`)
+puis atterrit sur l'accueil de son rôle et de sa cible (`AppTarget.homeFor`).
+
+---
+
+## 5. Configuration Appwrite
 
 ### Côté client (Flutter)
 
-`lib/core/appwrite/appwrite_config.dart` lit `APPWRITE_ENDPOINT`,
+`shared/lib/core/appwrite/appwrite_config.dart` lit `APPWRITE_ENDPOINT`,
 `APPWRITE_PROJECT_ID`, `APPWRITE_SELF_SIGNED` via `String.fromEnvironment` et
-expose les identifiants de base, tables, buckets et Functions.
+expose les identifiants de base, tables, buckets, Functions, canaux Realtime
+(`rowsChannel`, `rowChannel`) et URL de fichiers (`fileViewUrl`).
 `appwrite_client.dart` fournit les providers Riverpod `accountProvider`,
 `tablesProvider`, `storageProvider`, `realtimeProvider`, `functionsProvider`.
 
-```dart
-final client = Client()
-  ..setEndpoint('https://fra.cloud.appwrite.io/v1')
-  ..setProject('eco-responsable-cm');
-final tables = TablesDB(client);
-```
-
-**La clé API serveur n’est jamais embarquée dans l’application.** Le client
-n’utilise que la session utilisateur et les permissions par ligne.
+**La clé API serveur n'est jamais embarquée dans l'application.** Le client
+n'utilise que la session utilisateur et les permissions par ligne.
 
 ### Plateformes déclarées
 
-| Plateforme | ID Appwrite | Nom | Identifiant |
-|---|---|---|---|
-| Android | `eco-android` | `eco-respo mobile` | `com.eco.kf` |
-| iOS + macOS | `eco-apple` | `eco-respo apple` | `com.eco.kf` |
-| Linux | `eco-linux` | `eco-respo linux` | `com.eco.kf` |
-| Windows | `eco-windows` | `eco-respo windows` | `com.eco.kf` |
+| Plateforme | ID Appwrite | Identifiant |
+|---|---|---|
+| Android | `eco-android` | `com.eco.kf` |
+| iOS + macOS | `eco-apple` | `com.eco.kf` |
+| Linux | `eco-linux` | `com.eco.kf` |
+| Windows | `eco-windows` | `com.eco.kf` |
+| Web | à déclarer avec le nom d'hôte de déploiement | — |
 
 ### Côté administration
 
@@ -142,176 +211,142 @@ tool/appwrite_cli_init.sh     # idempotent : projet, plateformes, tables, bucket
 Le schéma est déclaré dans `tool/gen_appwrite_config.py` (source de vérité),
 rendu dans `appwrite.config.json` et poussé avec `appwrite push table --all -f`
 / `appwrite push bucket --all -f`. Détails : [`appwrite/README.md`](appwrite/README.md).
-
-Pour des appels REST ponctuels, `tool/appwrite.sh` (curl) lit `.env`
-(voir `.env.example`) avec une clé « standard » créée dans la console Cloud :
-
-```bash
-tool/appwrite.sh tables
-tool/appwrite.sh rows reward_items
-tool/appwrite.sh get /users
-```
+Pour des appels REST ponctuels, `tool/appwrite.sh` (curl) lit `.env` (voir `.env.example`).
 
 ---
 
-## 4. Architecture du code
+## 6. Architecture du code partagé
 
 ```
-lib/
-├── main.dart, app.dart          # bootstrap Hive + intl, MaterialApp.router
+shared/lib/
+├── eco_core.dart                # exports publics (runEcoApp, AppTarget…)
+├── bootstrap.dart, app.dart     # Hive + intl, ProviderScope(appTarget), MaterialApp.router
 ├── core/
+│   ├── app/app_target.dart      # AppTarget mobile/desktop/web + homeFor(role)
 │   ├── appwrite/                # config + providers Client / TablesDB / Storage / Realtime / Functions
-│   ├── constants/               # AppAssets (chemins + liste des photos), AppConstants
-│   ├── error/                   # AuthFailure, NetworkFailure…
-│   ├── offline/                 # SyncQueue (Hive) pour le mode hors ligne
-│   ├── router/                  # go_router, redirections auth / rôle
-│   ├── theme/                   # AppColors, AppTheme, AppTextStyles
-│   ├── utils/                   # ResponsiveHelper (mobile / desktop)
-│   └── widgets/                 # AppScaffold, EcoAppBar, PrimaryButton, StatusBadge, AssetImageBox…
-├── features/<feature>/
-│   ├── data/                    # implémentations Appwrite des repositories
-│   ├── domain/repositories/     # interfaces
-│   └── presentation/            # écrans + contrôleurs Riverpod
-│   (auth, home, reporting, collection_request, map, rewards, profile, collector, dashboard_admin)
-├── shared/models/               # AppUser, WasteReport, CollectionRequest, Collector, RewardItem, Zone… (1:1 avec les tables)
-└── l10n/                        # ARB fr / en + AppLocalizations générées
+│   ├── constants/               # AppAssets (chemins, photos, package), AppConstants (villes, tarifs, CO₂)
+│   ├── error/, offline/         # AuthFailure… ; SyncQueue Hive
+│   ├── router/                  # go_router : routes publiques, coques Citizen / Collector / Admin / Company
+│   ├── theme/                   # AppColors, AppTheme (Material 3 complet), AppTextStyles
+│   ├── utils/                   # ResponsiveHelper, PhotoPicker multiplateforme
+│   └── widgets/                 # coques + BackOfficeHeader, EcoAppBar, MiniMap, StatusBadge, AssetImageBox…
+├── features/
+│   ├── auth/                    # welcome, inscription téléphone + code, login email, ville, restricted
+│   ├── home/, reporting/, collection_request/, map/, rewards/, profile/, notifications/, settings/
+│   ├── collector/               # écrans + CollectorActions (accepter, démarrer, confirmer, annuler)
+│   ├── dashboard_admin/         # back-office mairie
+│   └── company/                 # back-office entreprise de collecte
+├── shared/models/               # AppUser, WasteReport, CollectionRequest, Collector, RewardItem, Zone, AppNotification
+└── l10n/
 ```
 
-Principes :
-
-- **Une feature = data / domain / presentation.** Les écrans ne parlent qu’aux
-  interfaces (`ReportRepository`, `AuthRepository`…) via Riverpod ; les
-  implémentations Appwrite sont interchangeables (tests avec fakes/mocks).
-- **Modèles 1:1 avec les tables** : `fromMap` / `toMap` sur `Row.data`, id
-  porté par `$id`.
-- **Realtime** : `AppwriteConfig.rowsChannel(table)` construit le canal
-  `tablesdb.<db>.tables.<table>.rows` avec le helper `Channel` du SDK.
-- **Valkey / logique lourde côté serveur** : jamais appelé depuis Flutter.
-  Matching collecteur, points, paiements et rapports passent par
-  `Functions.createExecution`. En l’absence de Function déployée, l’app
-  dégrade proprement (classement lu dans `users`, paiement `pending`).
+Principes : une feature = `data` / `domain` / `presentation` ; modèles 1:1
+avec les tables (`fromMap` / `toMap`) ; Realtime via `Channel.tablesdb` ;
+logique lourde (matching, points, paiements, rapports) déléguée à des
+Functions avec repli propre côté client quand elles ne sont pas déployées.
 
 ---
 
-## 5. Design system et visuels
+## 7. Design system, icônes et visuels
 
-Les sept planches de référence sont dans [`docs/design/`](docs/design/).
+Les sept planches sont dans [`docs/design/`](docs/design/). Palette : vert
+`#2E7D32`, vert clair `#A5D6A7` / pâle `#E8F5E9`, ocre `#D9A441`, bleu
+institutionnel `#1565C0`, fond `#F8F7F1`. Typographie Poppins (titres) /
+Inter (corps). Tout est centralisé dans `AppTheme.light()` : **ne pas styler
+localement**.
 
-| Jeton | Valeur | Usage |
-|---|---|---|
-| Vert principal | `#2E7D32` | actions, app bar, sélection |
-| Vert clair | `#A5D6A7` / pâle `#E8F5E9` | fonds de cartes, indicateurs |
-| Terre / ocre | `#D9A441` | accents, Mobile Money, niveau Or |
-| Fond | `#F8F7F1` | scaffold |
-| Texte | `#212121` titres · `#4A4A4A` corps · `#8A8A8A` secondaire | |
-| Typographie | **Poppins** titres/labels · **Inter** corps (google_fonts) | |
-| Rayons | 20 cartes · 16 champs · 12 chips · boutons pill | |
+### Icône d'application
 
-Tout est centralisé dans `AppTheme.light()` (boutons, champs, cartes, chips,
-segmented, nav bar, FAB, switch, snackbar, dialogs, bottom sheets). Règle :
-**ne pas styler localement**, utiliser le thème et les widgets `core/widgets`.
+Générée depuis le logo officiel (`shared/assets/images/logos/logo.png`) dans
+`shared/assets/branding/` : `app_icon.png` (carré arrondi vert), `app_icon_square.png`
+(iOS / stores), `app_icon_foreground.png` + `app_icon_monochrome.png`
+(adaptive Android), `banner_base.png`. `flutter_launcher_icons` la décline
+sur Android (adaptive + monochrome), iOS, Windows (`.ico`), macOS et web
+(favicon, PWA). Linux charge `data/app_icon.png` installé par CMake.
 
-### Images
+### Images de l'app
 
-Les visuels de `assets/images/` sont générés pour le projet et référencés par
-nom dans `AppAssets`. Deux familles :
+`shared/assets/images/` référencées par `AppAssets` ; `AssetImageBox` choisit
+`cover` (photos) ou `contain` (illustrations transparentes) et borne le
+décodage à la taille du cadre. Les sources brutes sont dans
+`docs/design/sources/`.
 
-- **Photos / illustrations pleines** (`AppAssets.photos`) : héros et slides
-  d’onboarding, avatars, photos de décharge et camion, aperçus de carte →
-  affichées en `BoxFit.cover`.
-- **Icônes et illustrations à fond transparent** (logo, badges, récompenses,
-  catégories de signalement, notifications, paiements) → `BoxFit.contain`,
-  jamais rognées.
+### Supports marketing (`docs/marketing/`)
 
-Le widget `AssetImageBox` choisit automatiquement l’ajustement selon
-`AppAssets.isPhoto`, accepte `fit` / `alignment` / `padding` pour forcer un
-recadrage, et borne le décodage à la taille du cadre (`cacheWidth`). Pour
-remplacer un visuel, **garder le même nom de fichier** ; pour en ajouter un,
-déclarer la constante dans `AppAssets` (et l’ajouter à `photos` si c’est une
-photo).
+| Fichier | Usage |
+|---|---|
+| `affiche_citoyens.png` | Affiche A3 grand public « Signalez. Collectez. Gagnez. » |
+| `affiche_collecteurs.png` | Affiche B2B collecteurs et entreprises de collecte |
+| `banniere_municipalites.png` | Bannière 16:9 institutionnelle (mairies, partenaires) |
+| `post_reseaux_sociaux.png` | Visuel carré de lancement (Instagram, Facebook, WhatsApp) |
 
 ---
 
-## 6. Backend : schéma, outils, état
+## 8. Backend : schéma, outils, état
 
 Base `eco_responsable_db`, sept tables (`users`, `waste_reports`,
 `collection_requests`, `collectors`, `reward_items`, `zones`,
 `notifications`), deux buckets (`report_photos`, `collection_proofs`).
-Permissions MVP : `read(any)`, `create/update/delete(users)` + sécurité par
-ligne ; les lignes créées par l’app portent en plus des permissions propriétaire.
-
-Schéma détaillé, colonnes, index, Functions : [`appwrite/README.md`](appwrite/README.md).
+Rôles : `citizen`, `collector`, `operator` (entreprise de collecte), `admin`
+(mairie). Schéma détaillé : [`appwrite/README.md`](appwrite/README.md).
 
 | Outil | Rôle |
 |---|---|
 | `tool/gen_appwrite_config.py` | Source de vérité du schéma → `appwrite.config.json` |
 | `tool/appwrite_cli_init.sh` | Provisionnement idempotent complet (CLI officielle) + données de départ |
 | `tool/appwrite.sh` | Client REST curl (`.env`, clé serveur) pour vérifications ponctuelles |
-| `tool/setup_appwrite.py` | Ancien provisionnement de l’instance auto-hébergée (API Databases, conservé pour référence) |
-| `tool/build_all_assets.py`, `tool/make_placeholders.py` | Anciens scripts de préparation des assets |
+| `tool/setup_appwrite.py` | Ancien provisionnement auto-hébergé (référence) |
 
 État au 21 septembre 2026 : base, tables, index, buckets et données de départ
-(3 récompenses, 5 zones de Yaoundé) en place et lisibles publiquement.
-Restent à déployer les Functions `matchCollector`, `computeRewardPoints`,
-`paymentWebhook`, `generateAdminReport` et un provider Messaging (FCM / APNs).
+en place. Restent à déployer les Functions `matchCollector`,
+`computeRewardPoints`, `paymentWebhook`, `generateAdminReport` (l'app dégrade
+proprement en leur absence).
 
 ---
 
-## 7. Intégration continue et livraison
+## 9. Intégration continue et livraison
 
 Un seul workflow, [`.github/workflows/ci.yml`](.github/workflows/ci.yml),
 découpé en sous-workflows chaînés :
 
-| # | Job | Contenu | Déclencheur |
-|---|---|---|---|
-| 1 | `qualite` | `flutter pub get`, `gen-l10n`, `analyze --fatal-infos`, `test --coverage` | toujours, bloquant |
-| 2 | `android` | APK + AAB release (`--dart-define` Appwrite), JDK 21, cache Gradle | toujours |
-| 3 | `linux` | bundle x64 → `.tar.gz` | toujours |
-| 4 | `windows` | runner Release → `.zip` | push `master`, tag, manuel |
-| 5 | `macos` | `.app` non signée → `.zip` | push `master`, tag, manuel |
-| 6 | `ios` | `Runner.app` sans signature → `.zip` | push `master`, tag, manuel |
-| 7 | `publication` | release GitHub avec tous les artefacts + `SHA256SUMS.txt` | tag `v*` |
+| # | Job | Dossier | Contenu | Déclencheur |
+|---|---|---|---|---|
+| 1 | `qualite` | `shared/` + apps | `gen-l10n`, `analyze --fatal-infos`, `test --coverage`, analyse des 3 apps | toujours, bloquant |
+| 2 | `android` | `mobile/` | APK + AAB release (JDK 21, cache Gradle) | toujours |
+| 2 | `ios` | `mobile/` | `Runner.app` sans signature | master, tag, manuel |
+| 3 | `linux` | `desktop/` | bundle x64 → `.tar.gz` | toujours |
+| 3 | `windows` | `desktop/` | runner Release → `.zip` | master, tag, manuel |
+| 3 | `macos` | `desktop/` | `.app` non signée → `.zip` | master, tag, manuel |
+| 4 | `web` | `web/` | `build/web` → `.tar.gz` | toujours |
+| 5 | `publication` | — | release GitHub avec tous les artefacts + `SHA256SUMS.txt` | tag `v*` |
 
-- Flutter épinglé à `3.47.1` (`FLUTTER_VERSION`), cache activé.
-- Les variables de dépôt `APPWRITE_ENDPOINT` / `APPWRITE_PROJECT_ID`
-  (Settings → Secrets and variables → Variables) surchargent les valeurs Cloud
-  par défaut.
-- Sur pull request, seuls les jobs 1 à 3 tournent. `workflow_dispatch` permet
-  de désactiver Windows / macOS / iOS.
-- Publier une version :
+Flutter épinglé à `3.47.1`. Les variables de dépôt `APPWRITE_ENDPOINT` /
+`APPWRITE_PROJECT_ID` surchargent les valeurs Cloud par défaut. Publier :
 
 ```bash
 git tag v1.0.0 && git push --tags
 ```
 
-La signature Android utilise la clé debug (APK installable, non publiable sur
-le Play Store) ; pour une signature de production, ajouter un keystore en
-secret et un `signingConfigs.release` dans `android/app/build.gradle.kts`.
-
 ---
 
-## 8. Tests et qualité
+## 10. Tests et qualité
 
 ```bash
-flutter analyze --fatal-infos
-flutter test
-flutter test --coverage && genhtml coverage/lcov.info -o coverage/html
+cd shared && flutter analyze --fatal-infos && flutter test --coverage
 ```
 
-- `test/widget_test.dart` : écran d’accueil (CTA « Commencer »), `StatusBadge`.
-- `test/features/auth/auth_repository_test.dart` : `AuthRepository` factice.
-- `test/features/reporting/report_repository_test.dart` : `ReportRepository` factice.
-- `test/shared/waste_report_test.dart` : mapping `WasteReport.fromMap` depuis une ligne Appwrite.
+- `test/widget_test.dart` : écran d'accueil, `StatusBadge`.
+- `test/features/auth/auth_repository_test.dart` : `AuthRepository` factice,
+  parcours téléphone + code à 6 chiffres, dérivation email / mot de passe.
+- `test/features/reporting/report_repository_test.dart`, `test/shared/waste_report_test.dart`.
 
-Lints : `flutter_lints ^6` (`analysis_options.yaml`). L’analyse doit rester à
-zéro info pour que la CI passe.
+Lints : `flutter_lints ^6`. L'analyse doit rester à zéro info (CI).
 
 ---
 
-## 9. Feuille de route
+## 11. Feuille de route
 
-- Déployer les Functions Appwrite (Node/Dart) et le provider Messaging.
-- Authentification téléphone + OTP (planche 1) en complément de l’email.
-- Durcir les permissions avec des Teams `admins` / `collectors`.
-- Signature Android de production et distribution TestFlight.
-- Tests d’intégration (`integration_test/`) sur le parcours signalement → résolution.
+- Déployer les Functions Appwrite (Node/Dart) ; provider Messaging pour le push.
+- Durcir les permissions avec des Teams `admins` / `operators` / `collectors`.
+- Signature Android de production, TestFlight, déclaration de la plateforme web.
+- Tests d'intégration sur le parcours signalement → affectation → résolution.

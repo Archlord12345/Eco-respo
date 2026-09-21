@@ -121,6 +121,7 @@
                     "elements": [
                         "citizen",
                         "collector",
+                        "operator",
                         "admin"
                     ]
                 },
@@ -322,6 +323,14 @@
                     "array": false,
                     "default": null,
                     "format": ""
+                },
+                {
+                    "key": "resolvedAt",
+                    "type": "datetime",
+                    "required": false,
+                    "array": false,
+                    "default": null,
+                    "format": ""
                 }
             ],
             "indexes": [
@@ -494,6 +503,50 @@
                     "required": false,
                     "array": false,
                     "size": 32,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "city",
+                    "type": "varchar",
+                    "required": false,
+                    "array": false,
+                    "size": 64,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "lat",
+                    "type": "double",
+                    "required": false,
+                    "array": false,
+                    "default": null,
+                    "min": -1.7976931348623157e+308,
+                    "max": 1.7976931348623157e+308
+                },
+                {
+                    "key": "lng",
+                    "type": "double",
+                    "required": false,
+                    "array": false,
+                    "default": null,
+                    "min": -1.7976931348623157e+308,
+                    "max": 1.7976931348623157e+308
+                },
+                {
+                    "key": "collectedAt",
+                    "type": "datetime",
+                    "required": false,
+                    "array": false,
+                    "default": null,
+                    "format": ""
+                },
+                {
+                    "key": "notes",
+                    "type": "varchar",
+                    "required": false,
+                    "array": false,
+                    "size": 500,
                     "default": null,
                     "encrypt": false
                 }
@@ -829,6 +882,24 @@
                     "array": false,
                     "default": null,
                     "format": ""
+                },
+                {
+                    "key": "refType",
+                    "type": "varchar",
+                    "required": false,
+                    "array": false,
+                    "size": 32,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "refId",
+                    "type": "varchar",
+                    "required": false,
+                    "array": false,
+                    "size": 64,
+                    "default": null,
+                    "encrypt": false
                 }
             ],
             "indexes": [

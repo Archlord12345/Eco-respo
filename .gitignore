@@ -31,8 +31,10 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
-/coverage/
+build/
+coverage/
+# Lockfile du package partagé (les apps figent leurs propres versions)
+/shared/pubspec.lock
 
 # Symbolication related
 app.*.symbols
@@ -41,9 +43,9 @@ app.*.symbols
 app.*.map.json
 
 # Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+**/android/app/debug
+**/android/app/profile
+**/android/app/release
 
 # Widget Preview related
 .widget_preview/
@@ -56,4 +58,5 @@ app.*.map.json
 **/macos/Flutter/ephemeral/
 **/linux/flutter/ephemeral/
 **/windows/flutter/ephemeral/
+**/android/.kotlin/
 __pycache__/
