@@ -111,7 +111,7 @@ class AdminShell extends StatelessWidget {
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      AssetImageBox(asset: AppAssets.iconCity, height: 48, width: double.infinity, radius: 8),
+                      const AssetImageBox(asset: AppAssets.iconCity, height: 72, width: 72, radius: 36),
                       const SizedBox(height: 8),
                       const Text(
                         'Une ville plus propre,\nun avenir durable.',

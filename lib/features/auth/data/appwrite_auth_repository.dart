@@ -9,39 +9,42 @@ import 'package:eco_responsable/shared/models/enums.dart';
 import 'package:eco_responsable/features/auth/domain/repositories/auth_repository.dart';
 
 class AppwriteAuthRepository implements AuthRepository {
-  AppwriteAuthRepository(this._account, this._db);
+  AppwriteAuthRepository(this._account, this._tables);
 
   final Account _account;
-  final Databases _db;
+  final TablesDB _tables;
 
-  Future<AppUser> _loadOrCreate(String userId) async {
-    try {
-      final doc = await _db.getDocument(
-        databaseId: AppwriteConfig.databaseId,
-        collectionId: AppwriteConfig.usersCollection,
-        documentId: userId,
-      );
-      return AppUser.fromMap(doc.data, id: doc.$id);
-    } on AppwriteException {
-      final account = await _account.get();
-      final user = AppUser(
+  static const _db = AppwriteConfig.databaseId;
+  static const _table = AppwriteConfig.usersCollection;
+
+  List<String> _ownerPermissions(String userId) => [
+        Permission.read(Role.user(userId)),
+        Permission.update(Role.user(userId)),
+        Permission.read(Role.users()),
+      ];
+
+  AppUser _defaultProfile(String userId, {String name = '', String? phone}) => AppUser(
         id: userId,
-        name: account.name.isEmpty ? 'Citoyen' : account.name,
-        phone: account.phone,
+        name: name.isEmpty ? 'Citoyen' : name,
+        phone: phone ?? '',
         city: 'Yaoundé',
         role: UserRole.citizen,
         points: 0,
       );
-      await _db.createDocument(
-        databaseId: AppwriteConfig.databaseId,
-        collectionId: AppwriteConfig.usersCollection,
-        documentId: userId,
+
+  Future<AppUser> _loadOrCreate(String userId) async {
+    try {
+      final row = await _tables.getRow(databaseId: _db, tableId: _table, rowId: userId);
+      return AppUser.fromMap(row.data, id: row.$id);
+    } on AppwriteException {
+      final account = await _account.get();
+      final user = _defaultProfile(userId, name: account.name, phone: account.phone);
+      await _tables.createRow(
+        databaseId: _db,
+        tableId: _table,
+        rowId: userId,
         data: user.toMap(),
-        permissions: [
-          Permission.read(Role.user(userId)),
-          Permission.update(Role.user(userId)),
-          Permission.read(Role.users()),
-        ],
+        permissions: _ownerPermissions(userId),
       );
       return user;
     }
@@ -52,21 +55,14 @@ class AppwriteAuthRepository implements AuthRepository {
     try {
       final account = await _account.get();
       try {
-        final doc = await _db.getDocument(
-          databaseId: AppwriteConfig.databaseId,
-          collectionId: AppwriteConfig.usersCollection,
-          documentId: account.$id,
+        final row = await _tables.getRow(
+          databaseId: _db,
+          tableId: _table,
+          rowId: account.$id,
         );
-        return AppUser.fromMap(doc.data, id: doc.$id);
+        return AppUser.fromMap(row.data, id: row.$id);
       } on AppwriteException {
-        return AppUser(
-          id: account.$id,
-          name: account.name,
-          phone: account.phone,
-          city: 'Yaoundé',
-          role: UserRole.citizen,
-          points: 0,
-        );
+        return _defaultProfile(account.$id, name: account.name, phone: account.phone);
       }
     } on AppwriteException {
       return null;
@@ -75,21 +71,13 @@ class AppwriteAuthRepository implements AuthRepository {
 
   @override
   Future<AppUser> upsertProfile(AppUser user) async {
-    try {
-      await _db.updateDocument(
-        databaseId: AppwriteConfig.databaseId,
-        collectionId: AppwriteConfig.usersCollection,
-        documentId: user.id,
-        data: user.toMap(),
-      );
-    } on AppwriteException {
-      await _db.createDocument(
-        databaseId: AppwriteConfig.databaseId,
-        collectionId: AppwriteConfig.usersCollection,
-        documentId: user.id,
-        data: user.toMap(),
-      );
-    }
+    await _tables.upsertRow(
+      databaseId: _db,
+      tableId: _table,
+      rowId: user.id,
+      data: user.toMap(),
+      permissions: _ownerPermissions(user.id),
+    );
     if (user.name.isNotEmpty) {
       await _account.updateName(name: user.name);
     }
@@ -146,6 +134,6 @@ class AppwriteAuthRepository implements AuthRepository {
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AppwriteAuthRepository(
     ref.watch(accountProvider),
-    ref.watch(databasesProvider),
+    ref.watch(tablesProvider),
   );
 });

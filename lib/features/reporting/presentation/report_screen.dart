@@ -41,8 +41,10 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
         setState(() {});
       }
     } else {
-      final r = await FilePicker.platform.pickFiles(type: FileType.image, withData: true);
-      if (r?.files.single.bytes != null) setState(() => _photo = r!.files.single.bytes);
+      final files = await FilePicker.pickFiles(type: FileType.image);
+      if (files.isEmpty) return;
+      final bytes = await files.first.readAsBytes();
+      setState(() => _photo = bytes);
     }
   }
 

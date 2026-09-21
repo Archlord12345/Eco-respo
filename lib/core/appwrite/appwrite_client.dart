@@ -14,8 +14,8 @@ final accountProvider = Provider<Account>(
   (ref) => Account(ref.watch(appwriteClientProvider)),
 );
 
-final databasesProvider = Provider<Databases>(
-  (ref) => Databases(ref.watch(appwriteClientProvider)),
+final tablesProvider = Provider<TablesDB>(
+  (ref) => TablesDB(ref.watch(appwriteClientProvider)),
 );
 
 final storageProvider = Provider<Storage>(

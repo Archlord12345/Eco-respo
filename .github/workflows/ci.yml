@@ -1,0 +1,312 @@
+# ============================================================================
+#  Éco-Responsable — pipeline unique
+#
+#  Un seul fichier, découpé en sous-workflows (jobs) chaînés :
+#
+#    1. qualite      analyse statique + tests (bloquant pour tout le reste)
+#    2. android      APK release (signé debug, installable) + AAB
+#    3. linux        bundle Linux x64 (.tar.gz)
+#    4. windows      bundle Windows x64 (.zip)
+#    5. macos        .app macOS (non signé)
+#    6. ios          .app iOS sans signature (vérification de compilation)
+#    7. publication  release GitHub avec tous les artefacts, sur tag v*
+#
+#  Déclencheurs : push master / tags v* / pull request / manuel.
+#  Sur PR, seuls qualite + android + linux tournent (rapide) ; les autres
+#  plateformes tournent sur master, sur tag, ou à la demande.
+# ============================================================================
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      toutes_plateformes:
+        description: "Construire aussi Windows, macOS et iOS"
+        type: boolean
+        default: true
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.47.1"
+  JAVA_VERSION: "21"
+  # Valeurs publiques (identifient le projet Appwrite Cloud, jamais la clé serveur).
+  APPWRITE_ENDPOINT: ${{ vars.APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1' }}
+  APPWRITE_PROJECT_ID: ${{ vars.APPWRITE_PROJECT_ID || 'eco-responsable-cm' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # --------------------------------------------------------------------------
+  # 1. Qualité : analyse + tests
+  # --------------------------------------------------------------------------
+  qualite:
+    name: "1 · Analyse & tests"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Dépendances + localisation
+        run: |
+          flutter pub get
+          flutter gen-l10n
+
+      - name: Analyse statique
+        run: flutter analyze --fatal-infos
+
+      - name: Tests unitaires et widgets
+        run: flutter test --coverage --reporter expanded
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: couverture-lcov
+          path: coverage/lcov.info
+          if-no-files-found: ignore
+
+  # --------------------------------------------------------------------------
+  # 2. Android
+  # --------------------------------------------------------------------------
+  android:
+    name: "2 · Android (APK + AAB)"
+    needs: qualite
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Dépendances
+        run: flutter pub get
+
+      - name: Build APK release
+        run: |
+          flutter build apk --release \
+            --dart-define=APPWRITE_ENDPOINT="$APPWRITE_ENDPOINT" \
+            --dart-define=APPWRITE_PROJECT_ID="$APPWRITE_PROJECT_ID"
+
+      - name: Build AppBundle release
+        run: |
+          flutter build appbundle --release \
+            --dart-define=APPWRITE_ENDPOINT="$APPWRITE_ENDPOINT" \
+            --dart-define=APPWRITE_PROJECT_ID="$APPWRITE_PROJECT_ID"
+
+      - name: Renommer les artefacts
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk dist/eco-responsable-android.apk
+          cp build/app/outputs/bundle/release/app-release.aab dist/eco-responsable-android.aab
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: dist/*
+          if-no-files-found: error
+
+  # --------------------------------------------------------------------------
+  # 3. Linux
+  # --------------------------------------------------------------------------
+  linux:
+    name: "3 · Linux x64"
+    needs: qualite
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dépendances système GTK
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev libstdc++-12-dev libsecret-1-dev
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Build Linux
+        run: |
+          flutter config --enable-linux-desktop
+          flutter pub get
+          flutter build linux --release \
+            --dart-define=APPWRITE_ENDPOINT="$APPWRITE_ENDPOINT" \
+            --dart-define=APPWRITE_PROJECT_ID="$APPWRITE_PROJECT_ID"
+
+      - name: Archiver
+        run: |
+          mkdir -p dist
+          tar -C build/linux/x64/release/bundle -czf dist/eco-responsable-linux-x64.tar.gz .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: dist/*
+          if-no-files-found: error
+
+  # --------------------------------------------------------------------------
+  # 4. Windows
+  # --------------------------------------------------------------------------
+  windows:
+    name: "4 · Windows x64"
+    needs: qualite
+    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.toutes_plateformes)
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Build Windows
+        run: |
+          flutter config --enable-windows-desktop
+          flutter pub get
+          flutter build windows --release \
+            --dart-define=APPWRITE_ENDPOINT="$APPWRITE_ENDPOINT" \
+            --dart-define=APPWRITE_PROJECT_ID="$APPWRITE_PROJECT_ID"
+
+      - name: Archiver
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dist/eco-responsable-windows-x64.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*
+          if-no-files-found: error
+
+  # --------------------------------------------------------------------------
+  # 5. macOS
+  # --------------------------------------------------------------------------
+  macos:
+    name: "5 · macOS"
+    needs: qualite
+    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.toutes_plateformes)
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Build macOS (non signé)
+        run: |
+          flutter config --enable-macos-desktop
+          flutter pub get
+          flutter build macos --release \
+            --dart-define=APPWRITE_ENDPOINT="$APPWRITE_ENDPOINT" \
+            --dart-define=APPWRITE_PROJECT_ID="$APPWRITE_PROJECT_ID"
+
+      - name: Archiver
+        run: |
+          mkdir -p dist
+          ditto -c -k --keepParent build/macos/Build/Products/Release/*.app dist/eco-responsable-macos.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/*
+          if-no-files-found: error
+
+  # --------------------------------------------------------------------------
+  # 6. iOS (compilation sans signature)
+  # --------------------------------------------------------------------------
+  ios:
+    name: "6 · iOS (sans signature)"
+    needs: qualite
+    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.toutes_plateformes)
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Build iOS
+        run: |
+          flutter pub get
+          flutter build ios --release --no-codesign \
+            --dart-define=APPWRITE_ENDPOINT="$APPWRITE_ENDPOINT" \
+            --dart-define=APPWRITE_PROJECT_ID="$APPWRITE_PROJECT_ID"
+
+      - name: Archiver
+        run: |
+          mkdir -p dist
+          ditto -c -k --keepParent build/ios/iphoneos/Runner.app dist/eco-responsable-ios-unsigned.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios
+          path: dist/*
+          if-no-files-found: error
+
+  # --------------------------------------------------------------------------
+  # 7. Publication (tags v* uniquement)
+  # --------------------------------------------------------------------------
+  publication:
+    name: "7 · Release GitHub"
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [android, linux, windows, macos, ios]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artefacts
+          merge-multiple: true
+
+      - name: Sommes de contrôle
+        run: |
+          cd artefacts
+          sha256sum * > SHA256SUMS.txt
+          ls -la
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: "Éco-Responsable ${{ github.ref_name }}"
+          generate_release_notes: true
+          files: artefacts/*

@@ -17,22 +17,26 @@ import 'package:eco_responsable/features/reporting/domain/repositories/report_re
 
 String _aw(Object e) => e is AppwriteException ? (e.message ?? 'Erreur Appwrite') : e.toString();
 
-class AppwriteReportRepository implements ReportRepository {
-  AppwriteReportRepository(this._db, this._realtime, this._queue);
+const _db = AppwriteConfig.databaseId;
 
-  final Databases _db;
+class AppwriteReportRepository implements ReportRepository {
+  AppwriteReportRepository(this._tables, this._realtime, this._queue);
+
+  final TablesDB _tables;
   final Realtime _realtime;
   final SyncQueue _queue;
+
+  static const _table = AppwriteConfig.reportsCollection;
 
   @override
   Future<List<WasteReport>> listMine(String userId) async {
     try {
-      final res = await _db.listDocuments(
-        databaseId: AppwriteConfig.databaseId,
-        collectionId: AppwriteConfig.reportsCollection,
+      final res = await _tables.listRows(
+        databaseId: _db,
+        tableId: _table,
         queries: [Query.equal('authorId', userId), Query.orderDesc('\$createdAt')],
       );
-      return res.documents.map(_mapReport).toList();
+      return res.rows.map(_mapReport).toList();
     } catch (e) {
       throw NetworkFailure(_aw(e));
     }
@@ -48,12 +52,12 @@ class AppwriteReportRepository implements ReportRepository {
       if (search != null && search.isNotEmpty) {
         queries.add(Query.contains('address', search));
       }
-      final res = await _db.listDocuments(
-        databaseId: AppwriteConfig.databaseId,
-        collectionId: AppwriteConfig.reportsCollection,
+      final res = await _tables.listRows(
+        databaseId: _db,
+        tableId: _table,
         queries: queries,
       );
-      return res.documents.map(_mapReport).toList();
+      return res.rows.map(_mapReport).toList();
     } catch (e) {
       throw NetworkFailure(_aw(e));
     }
@@ -61,21 +65,17 @@ class AppwriteReportRepository implements ReportRepository {
 
   @override
   Future<WasteReport> getById(String id) async {
-    final doc = await _db.getDocument(
-      databaseId: AppwriteConfig.databaseId,
-      collectionId: AppwriteConfig.reportsCollection,
-      documentId: id,
-    );
-    return _mapReport(doc);
+    final row = await _tables.getRow(databaseId: _db, tableId: _table, rowId: id);
+    return _mapReport(row);
   }
 
   @override
   Future<WasteReport> create(WasteReport report) async {
     try {
-      final doc = await _db.createDocument(
-        databaseId: AppwriteConfig.databaseId,
-        collectionId: AppwriteConfig.reportsCollection,
-        documentId: ID.unique(),
+      final row = await _tables.createRow(
+        databaseId: _db,
+        tableId: _table,
+        rowId: ID.unique(),
         data: report.toMap(),
         permissions: [
           Permission.read(Role.user(report.authorId)),
@@ -84,7 +84,7 @@ class AppwriteReportRepository implements ReportRepository {
           Permission.update(Role.users()),
         ],
       );
-      return _mapReport(doc);
+      return _mapReport(row);
     } catch (e) {
       await _queue.enqueue(type: 'waste_report', payload: report.toMap());
       throw NetworkFailure(_aw(e));
@@ -95,148 +95,153 @@ class AppwriteReportRepository implements ReportRepository {
   Future<WasteReport> updateStatus(String id, String status, {String? operatorId}) async {
     final data = <String, dynamic>{'status': status};
     if (operatorId != null) data['assignedOperatorId'] = operatorId;
-    final doc = await _db.updateDocument(
-      databaseId: AppwriteConfig.databaseId,
-      collectionId: AppwriteConfig.reportsCollection,
-      documentId: id,
+    final row = await _tables.updateRow(
+      databaseId: _db,
+      tableId: _table,
+      rowId: id,
       data: data,
     );
-    return _mapReport(doc);
+    return _mapReport(row);
   }
 
   @override
   Stream<List<WasteReport>> watchAll() {
     final controller = StreamController<List<WasteReport>>();
     listAll().then(controller.add).catchError((_) {});
-    final sub = _realtime.subscribe([
-      'databases.${AppwriteConfig.databaseId}.collections.${AppwriteConfig.reportsCollection}.documents',
-    ]);
+    final sub = _realtime.subscribe([AppwriteConfig.rowsChannel(_table)]);
     sub.stream.listen((_) async {
-      controller.add(await listAll());
+      try {
+        controller.add(await listAll());
+      } catch (_) {}
     });
     controller.onCancel = sub.close;
     return controller.stream;
   }
 
-  WasteReport _mapReport(models.Document doc) =>
-      WasteReport.fromMap(doc.data, id: doc.$id);
+  WasteReport _mapReport(models.Row row) => WasteReport.fromMap(row.data, id: row.$id);
 }
 
 class AppwriteCollectionRequestRepository implements CollectionRequestRepository {
-  AppwriteCollectionRequestRepository(this._db, this._functions);
+  AppwriteCollectionRequestRepository(this._tables, this._functions);
 
-  final Databases _db;
+  final TablesDB _tables;
   final Functions _functions;
+
+  static const _table = AppwriteConfig.requestsCollection;
+
+  CollectionRequest _map(models.Row r) => CollectionRequest.fromMap(r.data, id: r.$id);
 
   @override
   Future<List<CollectionRequest>> listMine(String userId) async {
-    final res = await _db.listDocuments(
-      databaseId: AppwriteConfig.databaseId,
-      collectionId: AppwriteConfig.requestsCollection,
+    final res = await _tables.listRows(
+      databaseId: _db,
+      tableId: _table,
       queries: [Query.equal('authorId', userId), Query.orderDesc('\$createdAt')],
     );
-    return res.documents
-        .map((d) => CollectionRequest.fromMap(d.data, id: d.$id))
-        .toList();
+    return res.rows.map(_map).toList();
   }
 
   @override
   Future<List<CollectionRequest>> listForCollector(String collectorId) async {
-    final res = await _db.listDocuments(
-      databaseId: AppwriteConfig.databaseId,
-      collectionId: AppwriteConfig.requestsCollection,
+    final res = await _tables.listRows(
+      databaseId: _db,
+      tableId: _table,
       queries: [
         Query.equal('assignedCollectorId', collectorId),
         Query.orderDesc('\$createdAt'),
       ],
     );
-    return res.documents
-        .map((d) => CollectionRequest.fromMap(d.data, id: d.$id))
-        .toList();
+    return res.rows.map(_map).toList();
   }
 
   @override
   Future<CollectionRequest> create(CollectionRequest request) async {
-    final doc = await _db.createDocument(
-      databaseId: AppwriteConfig.databaseId,
-      collectionId: AppwriteConfig.requestsCollection,
-      documentId: ID.unique(),
+    final row = await _tables.createRow(
+      databaseId: _db,
+      tableId: _table,
+      rowId: ID.unique(),
       data: request.toMap(),
+      permissions: [
+        Permission.read(Role.user(request.authorId)),
+        Permission.update(Role.user(request.authorId)),
+        Permission.read(Role.users()),
+        Permission.update(Role.users()),
+      ],
     );
-    // Valkey: agrégé côté Appwrite Function, consommé ici via HTTP
+    // Valkey : agrégé côté Appwrite Function, consommé ici via HTTP.
     try {
       await _functions.createExecution(
         functionId: AppwriteConfig.matchCollectorFn,
-        body: '{"requestId":"${doc.$id}"}',
+        body: '{"requestId":"${row.$id}"}',
       );
     } catch (_) {}
-    return CollectionRequest.fromMap(doc.data, id: doc.$id);
+    return _map(row);
   }
 
   @override
   Future<CollectionRequest> update(CollectionRequest request) async {
-    final doc = await _db.updateDocument(
-      databaseId: AppwriteConfig.databaseId,
-      collectionId: AppwriteConfig.requestsCollection,
-      documentId: request.id,
+    final row = await _tables.updateRow(
+      databaseId: _db,
+      tableId: _table,
+      rowId: request.id,
       data: request.toMap(),
     );
-    return CollectionRequest.fromMap(doc.data, id: doc.$id);
+    return _map(row);
   }
 }
 
 class AppwriteCollectorRepository implements CollectorRepository {
-  AppwriteCollectorRepository(this._db);
-  final Databases _db;
+  AppwriteCollectorRepository(this._tables);
+  final TablesDB _tables;
+
+  static const _table = AppwriteConfig.collectorsCollection;
 
   @override
   Future<List<Collector>> list() async {
-    final res = await _db.listDocuments(
-      databaseId: AppwriteConfig.databaseId,
-      collectionId: AppwriteConfig.collectorsCollection,
-    );
-    return res.documents.map((d) => Collector.fromMap(d.data, id: d.$id)).toList();
+    final res = await _tables.listRows(databaseId: _db, tableId: _table);
+    return res.rows.map((r) => Collector.fromMap(r.data, id: r.$id)).toList();
   }
 
   @override
   Future<Collector?> byUserId(String userId) async {
-    final res = await _db.listDocuments(
-      databaseId: AppwriteConfig.databaseId,
-      collectionId: AppwriteConfig.collectorsCollection,
-      queries: [Query.equal('userId', userId)],
+    final res = await _tables.listRows(
+      databaseId: _db,
+      tableId: _table,
+      queries: [Query.equal('userId', userId), Query.limit(1)],
     );
-    if (res.documents.isEmpty) return null;
-    return Collector.fromMap(res.documents.first.data, id: res.documents.first.$id);
+    if (res.rows.isEmpty) return null;
+    return Collector.fromMap(res.rows.first.data, id: res.rows.first.$id);
   }
 
   @override
   Future<void> setAvailability(String id, bool available) async {
-    await _db.updateDocument(
-      databaseId: AppwriteConfig.databaseId,
-      collectionId: AppwriteConfig.collectorsCollection,
-      documentId: id,
+    await _tables.updateRow(
+      databaseId: _db,
+      tableId: _table,
+      rowId: id,
       data: {'isAvailable': available},
     );
   }
 }
 
 class AppwriteRewardRepository implements RewardRepository {
-  AppwriteRewardRepository(this._db, this._functions);
-  final Databases _db;
+  AppwriteRewardRepository(this._tables, this._functions);
+  final TablesDB _tables;
   final Functions _functions;
 
   @override
   Future<List<RewardItem>> catalog() async {
-    final res = await _db.listDocuments(
-      databaseId: AppwriteConfig.databaseId,
-      collectionId: AppwriteConfig.rewardsCollection,
+    final res = await _tables.listRows(
+      databaseId: _db,
+      tableId: AppwriteConfig.rewardsCollection,
+      queries: [Query.equal('enabled', true), Query.orderAsc('pointsCost')],
     );
-    return res.documents.map((d) => RewardItem.fromMap(d.data, id: d.$id)).toList();
+    return res.rows.map((r) => RewardItem.fromMap(r.data, id: r.$id)).toList();
   }
 
   @override
   Future<int> redeem({required String userId, required String itemId}) async {
-    // Valkey: agrégé côté Appwrite Function, consommé ici via HTTP
+    // Valkey : agrégé côté Appwrite Function, consommé ici via HTTP.
     try {
       final ex = await _functions.createExecution(
         functionId: AppwriteConfig.computeRewardPointsFn,
@@ -255,7 +260,7 @@ class AppwriteRewardRepository implements RewardRepository {
 
   @override
   Future<List<Map<String, dynamic>>> leaderboard() async {
-    // Valkey: agrégé côté Appwrite Function, consommé ici via HTTP
+    // Valkey : agrégé côté Appwrite Function ; repli sur la table users.
     try {
       final ex = await _functions.createExecution(
         functionId: AppwriteConfig.computeRewardPointsFn,
@@ -265,43 +270,38 @@ class AppwriteRewardRepository implements RewardRepository {
         {'name': 'Classement', 'points': ex.responseBody},
       ];
     } catch (_) {
-      final users = await _db.listDocuments(
-        databaseId: AppwriteConfig.databaseId,
-        collectionId: AppwriteConfig.usersCollection,
+      final users = await _tables.listRows(
+        databaseId: _db,
+        tableId: AppwriteConfig.usersCollection,
         queries: [Query.orderDesc('points'), Query.limit(10)],
       );
-      return users.documents
-          .map((d) => {'name': d.data['name'], 'points': d.data['points']})
+      return users.rows
+          .map((r) => {'name': r.data['name'], 'points': r.data['points']})
           .toList();
     }
   }
 }
 
 class AppwriteZoneRepository implements ZoneRepository {
-  AppwriteZoneRepository(this._db);
-  final Databases _db;
+  AppwriteZoneRepository(this._tables);
+  final TablesDB _tables;
+
+  static const _table = AppwriteConfig.zonesCollection;
 
   @override
   Future<List<Zone>> list() async {
-    final res = await _db.listDocuments(
-      databaseId: AppwriteConfig.databaseId,
-      collectionId: AppwriteConfig.zonesCollection,
-    );
-    return res.documents.map((d) => Zone.fromMap(d.data, id: d.$id)).toList();
+    final res = await _tables.listRows(databaseId: _db, tableId: _table);
+    return res.rows.map((r) => Zone.fromMap(r.data, id: r.$id)).toList();
   }
 
   @override
   Future<void> assignOperator(String zoneId, String operatorId) async {
-    final doc = await _db.getDocument(
-      databaseId: AppwriteConfig.databaseId,
-      collectionId: AppwriteConfig.zonesCollection,
-      documentId: zoneId,
-    );
-    final ops = [...(doc.data['assignedOperators'] as List? ?? []), operatorId];
-    await _db.updateDocument(
-      databaseId: AppwriteConfig.databaseId,
-      collectionId: AppwriteConfig.zonesCollection,
-      documentId: zoneId,
+    final row = await _tables.getRow(databaseId: _db, tableId: _table, rowId: zoneId);
+    final ops = [...(row.data['assignedOperators'] as List? ?? []), operatorId];
+    await _tables.updateRow(
+      databaseId: _db,
+      tableId: _table,
+      rowId: zoneId,
       data: {'assignedOperators': ops.toSet().toList()},
     );
   }
@@ -361,7 +361,7 @@ class StorageUploader {
 
 final reportRepositoryProvider = Provider<ReportRepository>((ref) {
   return AppwriteReportRepository(
-    ref.watch(databasesProvider),
+    ref.watch(tablesProvider),
     ref.watch(realtimeProvider),
     SyncQueue(),
   );
@@ -369,24 +369,24 @@ final reportRepositoryProvider = Provider<ReportRepository>((ref) {
 
 final requestRepositoryProvider = Provider<CollectionRequestRepository>((ref) {
   return AppwriteCollectionRequestRepository(
-    ref.watch(databasesProvider),
+    ref.watch(tablesProvider),
     ref.watch(functionsProvider),
   );
 });
 
 final collectorRepositoryProvider = Provider<CollectorRepository>((ref) {
-  return AppwriteCollectorRepository(ref.watch(databasesProvider));
+  return AppwriteCollectorRepository(ref.watch(tablesProvider));
 });
 
 final rewardRepositoryProvider = Provider<RewardRepository>((ref) {
   return AppwriteRewardRepository(
-    ref.watch(databasesProvider),
+    ref.watch(tablesProvider),
     ref.watch(functionsProvider),
   );
 });
 
 final zoneRepositoryProvider = Provider<ZoneRepository>((ref) {
-  return AppwriteZoneRepository(ref.watch(databasesProvider));
+  return AppwriteZoneRepository(ref.watch(tablesProvider));
 });
 
 final paymentServiceProvider = Provider<PaymentService>((ref) {

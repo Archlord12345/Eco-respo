@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Provisionne la base Appwrite Éco-Responsable (clé serveur, jamais dans Flutter)."""
+"""Provisionne la base Appwrite Éco-Responsable (clé serveur, jamais dans Flutter).
+
+Hérité de l'instance auto-hébergée (API Databases). Sur Appwrite Cloud,
+préférer `tool/appwrite_cli_init.sh` (CLI + appwrite.config.json).
+"""
 from __future__ import annotations
 
 import json
@@ -10,9 +14,9 @@ import urllib.error
 import urllib.request
 
 ENDPOINT = os.environ.get(
-    "APPWRITE_ENDPOINT", "https://appwrite.kernelforge.codes/v1"
+    "APPWRITE_ENDPOINT", "https://fra.cloud.appwrite.io/v1"
 ).rstrip("/")
-PROJECT = os.environ.get("APPWRITE_PROJECT_ID", "6aad2f1a000a6a6de281")
+PROJECT = os.environ.get("APPWRITE_PROJECT_ID", "eco-responsable-cm")
 API_KEY = os.environ.get("APPWRITE_API_KEY")
 DB = "eco_responsable_db"
 

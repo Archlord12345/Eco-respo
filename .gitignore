@@ -47,3 +47,13 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Fichiers régénérés par Flutter à chaque build (chemins locaux)
+**/android/local.properties
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Flutter/ephemeral/
+**/macos/Flutter/ephemeral/
+**/linux/flutter/ephemeral/
+**/windows/flutter/ephemeral/
+__pycache__/

@@ -36,7 +36,14 @@ class HomeScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              AssetImageBox(asset: AppAssets.leafDeco, height: 56, width: 56, radius: 12),
+              const AssetImageBox(
+                asset: AppAssets.leafDeco,
+                height: 56,
+                width: 72,
+                fit: BoxFit.cover,
+                alignment: Alignment.bottomRight,
+                radius: 12,
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -171,16 +178,16 @@ class HomeScreen extends ConsumerWidget {
 final notificationsProvider = FutureProvider<List<AppNotification>>((ref) async {
   final userId = ref.watch(authProvider).user?.id;
   if (userId == null) return const [];
-  final response = await ref.watch(databasesProvider).listDocuments(
+  final response = await ref.watch(tablesProvider).listRows(
         databaseId: AppwriteConfig.databaseId,
-        collectionId: AppwriteConfig.notificationsCollection,
+        tableId: AppwriteConfig.notificationsCollection,
         queries: [
           Query.equal('userId', userId),
           Query.orderDesc('createdAt'),
           Query.limit(10),
         ],
       );
-  return response.documents
-      .map((document) => AppNotification.fromMap(document.data, id: document.$id))
+  return response.rows
+      .map((row) => AppNotification.fromMap(row.data, id: row.$id))
       .toList();
 });

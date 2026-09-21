@@ -12,9 +12,9 @@ if [[ -f "$ENV_FILE" ]]; then
   set +a
 fi
 
-ENDPOINT="${APPWRITE_ENDPOINT:-https://appwrite.kernelforge.codes/v1}"
+ENDPOINT="${APPWRITE_ENDPOINT:-https://fra.cloud.appwrite.io/v1}"
 ENDPOINT="${ENDPOINT%/}"
-PROJECT="${APPWRITE_PROJECT_ID:-6aad2f1a000a6a6de281}"
+PROJECT="${APPWRITE_PROJECT_ID:-eco-responsable-cm}"
 DB="${APPWRITE_DATABASE_ID:-eco_responsable_db}"
 API_KEY="${APPWRITE_API_KEY:-}"
 
@@ -28,10 +28,11 @@ Commandes:
   ping                         GET /health
   version                      GET /health/version
   users                        GET /users
-  databases                    GET /databases
-  collections                  GET /databases/\$DB/collections
-  collection <id>              GET une collection
-  documents <collection>       GET documents d'une collection
+  databases                    GET /tablesdb
+  tables                       GET /tablesdb/\$DB/tables
+  table <id>                   GET une table
+  rows <table>                 GET lignes d'une table
+  collections | documents      alias historiques de tables | rows
   buckets                      GET /storage/buckets
   functions                    GET /functions
   teams                        GET /teams
@@ -43,8 +44,8 @@ Commandes:
 
 Exemples:
   tool/appwrite.sh ping
-  tool/appwrite.sh collections
-  tool/appwrite.sh documents waste_reports
+  tool/appwrite.sh tables
+  tool/appwrite.sh rows waste_reports
   tool/appwrite.sh get /users
 EOF
 }
@@ -123,21 +124,21 @@ case "$cmd" in
     ;;
   databases)
     need_key
-    aw GET /databases
+    aw GET /tablesdb
     ;;
-  collections)
+  tables|collections)
     need_key
-    aw GET "/databases/$DB/collections"
+    aw GET "/tablesdb/$DB/tables"
     ;;
-  collection)
+  table|collection)
     need_key
-    [[ -n "${1:-}" ]] || { echo "collection <id> requis" >&2; exit 1; }
-    aw GET "/databases/$DB/collections/$1"
+    [[ -n "${1:-}" ]] || { echo "table <id> requis" >&2; exit 1; }
+    aw GET "/tablesdb/$DB/tables/$1"
     ;;
-  documents)
+  rows|documents)
     need_key
-    [[ -n "${1:-}" ]] || { echo "documents <collection> requis" >&2; exit 1; }
-    aw GET "/databases/$DB/collections/$1/documents"
+    [[ -n "${1:-}" ]] || { echo "rows <table> requis" >&2; exit 1; }
+    aw GET "/tablesdb/$DB/tables/$1/rows"
     ;;
   buckets)
     need_key

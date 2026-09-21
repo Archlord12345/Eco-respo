@@ -132,7 +132,7 @@ class RewardsScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(8),
         child: Column(
           children: [
-            AssetImageBox(asset: asset, height: 48, width: 48, radius: 8),
+            AssetImageBox(asset: asset, height: 64, width: double.infinity, radius: 8),
             Text(e.title, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
             Text('À partir de ${e.pointsCost} pts', style: const TextStyle(fontSize: 10)),
             TextButton(

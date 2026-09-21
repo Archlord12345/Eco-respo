@@ -520,7 +520,7 @@ class _ReportsMap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final markers = reports.valueOrNull
+    final markers = reports.value
             ?.where((report) => report.lat != 0 && report.lng != 0)
             .map(
               (report) => Marker(
@@ -567,7 +567,7 @@ class _ZonesMap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final markers = zones.valueOrNull
+    final markers = zones.value
             ?.map(
               (zone) => Marker(
                 point: LatLng(zone.centerLat, zone.centerLng),

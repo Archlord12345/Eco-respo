@@ -1,12 +1,14 @@
+import 'package:appwrite/appwrite.dart';
+
 /// Configuration Appwrite — valeurs injectées via `--dart-define`.
 class AppwriteConfig {
   static const endpoint = String.fromEnvironment(
     'APPWRITE_ENDPOINT',
-    defaultValue: 'https://appwrite.kernelforge.codes/v1',
+    defaultValue: 'https://fra.cloud.appwrite.io/v1',
   );
   static const projectId = String.fromEnvironment(
     'APPWRITE_PROJECT_ID',
-    defaultValue: '6aad2f1a000a6a6de281',
+    defaultValue: 'eco-responsable-cm',
   );
   static const selfSigned = bool.fromEnvironment(
     'APPWRITE_SELF_SIGNED',
@@ -14,6 +16,7 @@ class AppwriteConfig {
   );
   static const databaseId = 'eco_responsable_db';
 
+  // Tables TablesDB (voir appwrite.config.json).
   static const usersCollection = 'users';
   static const reportsCollection = 'waste_reports';
   static const requestsCollection = 'collection_requests';
@@ -21,6 +24,11 @@ class AppwriteConfig {
   static const rewardsCollection = 'reward_items';
   static const zonesCollection = 'zones';
   static const notificationsCollection = 'notifications';
+
+  /// Canal Realtime des lignes d'une table (format SDK 26 :
+  /// `tablesdb.<db>.tables.<table>.rows`).
+  static String rowsChannel(String table) =>
+      Channel.tablesdb(databaseId).table(table).row().toString();
 
   static const reportPhotosBucket = 'report_photos';
   static const collectionProofsBucket = 'collection_proofs';

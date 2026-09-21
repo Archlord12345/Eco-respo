@@ -40,4 +40,27 @@ class AppAssets {
   static const orangeMoney = 'assets/images/payments/orange_money.png';
   static const afriland = 'assets/images/payments/afriland.png';
   static const iconTri = 'assets/images/payments/icon_tri.png';
+
+  /// Visuels « photo » (pleins bords, à recadrer en `cover`). Tout le reste
+  /// est une illustration ou une icône à fond transparent (`contain`).
+  static const photos = <String>{
+    welcomeHero,
+    welcomeWorker,
+    welcomeCity,
+    onboarding1,
+    onboarding2,
+    onboarding3,
+    avatarMoussa,
+    avatarSandrine,
+    dumpPhoto,
+    reportDetailPhoto,
+    proofPlaceholder,
+    collectorTruck,
+    mapPreview,
+    heatmap,
+    zonesMap,
+    cameroonFlag,
+  };
+
+  static bool isPhoto(String asset) => photos.contains(asset);
 }
