@@ -37,9 +37,7 @@ class AppAssets {
   static const reportDetailPhoto = 'assets/images/reporting/report_detail_photo.png';
   static const proofPlaceholder = 'assets/images/reporting/proof_placeholder.png';
   static const collectorTruck = 'assets/images/reporting/collector_truck.png';
-  static const mapPreview = 'assets/images/map/map_preview.png';
-  static const heatmap = 'assets/images/map/heatmap.png';
-  static const zonesMap = 'assets/images/map/zones_map.png';
+  // Les cartes sont toujours de vraies cartes (flutter_map) : aucun visuel statique.
   static const iconRecycle = 'assets/images/map/icon_recycle.png';
   static const iconCity = 'assets/images/map/icon_city.png';
   static const iconCitizens = 'assets/images/map/icon_citizens.png';
@@ -64,9 +62,6 @@ class AppAssets {
     reportDetailPhoto,
     proofPlaceholder,
     collectorTruck,
-    mapPreview,
-    heatmap,
-    zonesMap,
     cameroonFlag,
   };
 

@@ -33,7 +33,7 @@ Monorepo Flutter branché sur **Appwrite Cloud** — endpoint
 8. [Backend : schéma, outils, état](#8-backend--schéma-outils-état)
 9. [Intégration continue et livraison](#9-intégration-continue-et-livraison)
 10. [Tests et qualité](#10-tests-et-qualité)
-11. [Feuille de route](#11-feuille-de-route)
+11. [Feuille de route et plan de finalisation](#11-feuille-de-route-et-plan-de-finalisation)
 
 ---
 
@@ -51,6 +51,7 @@ ECo/
 ├── appwrite/    documentation du schéma backend
 ├── appwrite.config.json   schéma déclaratif (généré par tool/gen_appwrite_config.py)
 ├── tool/        scripts Appwrite (CLI, curl, génération du schéma)
+├── docs/plan/       dossier de finalisation (à donner à Claude pour le plan sur 7 jours)
 ├── docs/design/     planches de référence + sources des visuels
 └── docs/marketing/  affiches publicitaires, bannière, post réseaux sociaux
 ```
@@ -80,7 +81,7 @@ injectée au démarrage et pilote :
 | Détail d'un signalement | Photo, carte, chronologie de statut temps réel, opérateur affecté |
 | Demander une collecte | Type, volume, créneau, récurrence, position GPS, paiement MTN MoMo / Orange Money / Afriland → `collection_requests` |
 | Suivi d'une demande | Collecteur assigné (nom, téléphone, appel direct), ETA, stepper de statut Realtime, paiement |
-| Carte | Signalements et points de collecte autour de soi (OSM) |
+| Carte | Vraie carte OpenStreetMap : ma position (GPS), rayon réglable 1–15 km, points de collecte et signalements ouverts filtrés par type, liste des points proches, itinéraire |
 | Récompenses | Solde, niveaux Bronze / Argent / Or, catalogue `reward_items`, échange (Function ou débit direct) |
 | Notifications | Fil filtrable (toutes / non lues / collectes / points / alertes), marquage lu, navigation contextuelle |
 | Profil, historique, paramètres | KPIs réels, langue, notifications, changement du code à 6 chiffres, déconnexion |
@@ -344,9 +345,38 @@ Lints : `flutter_lints ^6`. L'analyse doit rester à zéro info (CI).
 
 ---
 
-## 11. Feuille de route
+## 11. Feuille de route et plan de finalisation
 
-- Déployer les Functions Appwrite (Node/Dart) ; provider Messaging pour le push.
-- Durcir les permissions avec des Teams `admins` / `operators` / `collectors`.
-- Signature Android de production, TestFlight, déclaration de la plateforme web.
-- Tests d'intégration sur le parcours signalement → affectation → résolution.
+Le dossier [`docs/plan/`](docs/plan/) contient tout le nécessaire pour
+produire (avec Claude ou à la main) un **plan de travail sur 7 jours** qui
+rend chaque fonctionnalité réelle, pour une équipe de **2 backend + 3 frontend
+(mobile, desktop, web)** :
+
+| Fichier | Contenu |
+|---|---|
+| [`00-brief-pour-claude.md`](docs/plan/00-brief-pour-claude.md) | La consigne à coller en premier : objectif, équipe, contraintes, format attendu |
+| [`01-vision-et-perimetre.md`](docs/plan/01-vision-et-perimetre.md) | Produit, personas, périmètre cible par profil |
+| [`02-etat-actuel.md`](docs/plan/02-etat-actuel.md) | Audit : réel / partiel / simulé / absent, module par module |
+| [`03-architecture-technique.md`](docs/plan/03-architecture-technique.md) | Monorepo, stack, patterns, flux, CI |
+| [`04-backend-appwrite.md`](docs/plan/04-backend-appwrite.md) | Schéma complet, évolutions, Teams, 9 Functions spécifiées, paiements, Messaging, seeds |
+| [`05-frontend-mobile.md`](docs/plan/05-frontend-mobile.md) · [`06-frontend-desktop.md`](docs/plan/06-frontend-desktop.md) · [`07-frontend-web.md`](docs/plan/07-frontend-web.md) | Reste à faire par frontend |
+| [`08-carte-temps-reel.md`](docs/plan/08-carte-temps-reel.md) | Spécification de la carte réelle et du temps réel |
+| [`09-equipe-contrats-recette.md`](docs/plan/09-equipe-contrats-recette.md) | Organisation, chemin critique, contrats d'interface, definition of done, 14 scénarios de recette |
+
+Usage : `cat docs/plan/*.md` → coller dans Claude → demander le plan
+(voir [`docs/README.md`](docs/README.md)).
+
+Grandes lignes du reste à faire :
+
+- **Backend** : Functions `matchCollector`, `computeRewardPoints`, `initPayment` /
+  `paymentWebhook` (MTN MoMo, Orange Money), `updateCollectorPosition`,
+  `sendCampaign`, `generateAdminReport`, `manageRole`, `reverseGeocode` ;
+  tables `collector_positions`, `collection_points`, `payments`, `payouts`,
+  `points_ledger` ; Teams et permissions ; Messaging push ; plateforme Web.
+- **Mobile** : paiement réel, position du collecteur en direct, push,
+  localisation en arrière-plan, signature Android de release.
+- **Desktop** : rôles via Teams, polygones de zones, rapports PDF, versements,
+  installeurs.
+- **Web** : déploiement continu (Appwrite Sites), PWA, push web, landing page.
+- **Carte** : déjà réelle partout (flutter_map / OSM) ; reste `collection_points`,
+  itinéraires OSRM, collecteurs en direct, clustering.

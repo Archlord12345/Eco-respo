@@ -504,7 +504,18 @@ class CollectorStopDetailScreen extends ConsumerWidget {
                       ),
                     )
                   else
-                    const AssetImageBox(asset: AppAssets.mapPreview, height: 160, width: double.infinity),
+                    MiniMap(
+                      pins: const [],
+                      center: AppConstants.centerFor(r.city),
+                      zoom: 12,
+                      height: 160,
+                      interactive: false,
+                      overlay: const Positioned(
+                        left: 10,
+                        bottom: 10,
+                        child: Chip(label: Text('Position non renseignée'), backgroundColor: Colors.white),
+                      ),
+                    ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
