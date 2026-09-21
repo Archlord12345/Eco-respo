@@ -10,6 +10,7 @@
 	<string>La localisation sert à placer votre signalement et à trouver les points de collecte proches.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>La localisation sert à placer votre signalement et à trouver les points de collecte proches.</string>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
